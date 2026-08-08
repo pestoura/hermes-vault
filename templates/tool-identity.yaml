@@ -1,0 +1,42 @@
+# Workload/tool identity design template — no real credentials.
+identity:
+  name: example-tool
+  component: example-service
+  owner: TBD
+  environment: jarvas
+
+  authentication:
+    preferred_method: approle|cert|jwt|kubernetes|TBD
+    bootstrap_secret_zero_strategy: TBD
+    token_ttl: 5m
+    token_max_ttl: 15m
+    renewable: false
+
+  authorization:
+    policy_name: example-tool
+    allowed_actions:
+      - example.read
+    allowed_vault_paths:
+      - secret/data/jarvas/example/runtime/*
+    explicitly_denied_cross_domains:
+      - secret/data/jarvas/other-tool/*
+
+  capability_delivery:
+    preference:
+      - delegated_operation
+      - dynamic_credential
+      - response_wrapping
+      - memory_only
+      - tmpfs
+      - static_secret
+
+  evidence:
+    correlation_required: true
+    audit_required: true
+    redact_secret_values: true
+
+  lifecycle:
+    rotation_runbook: TBD
+    revocation_runbook: TBD
+    acceptance_test: TBD
+    negative_test: TBD
