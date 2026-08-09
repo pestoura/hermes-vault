@@ -2,9 +2,11 @@
 
 ## Purpose
 
-This document governs **how Hermes Vault work is delivered**. The implementation roadmap defines *what* must be built; this document defines the execution model used to turn that roadmap into usable, validated baselines quickly and safely.
+This document governs **how Hermes Vault work is delivered**. The implementation roadmap defines *what* must be built; this document defines how that roadmap is turned into usable, validated baselines quickly and safely.
 
-The operating rule is:
+It follows the portfolio-level JDS-001 principles: small batches, vertical slices, walking skeletons, bounded WIP, fast feedback, evidence-based promotion, secure delivery and recovery-aware releases.
+
+Permanent rule:
 
 ```text
 GREEN | PASS | SUPPORTED | ACCEPTED
@@ -12,13 +14,13 @@ GREEN | PASS | SUPPORTED | ACCEPTED
         CONTINUE AUTOMATICALLY
 ```
 
-A gate that did not execute is not GREEN. Work stops only for a real blocker: security or recovery risk, destructive ambiguity, missing required credential/human action, broken shared baseline, external dependency unavailable, or evidence insufficient to make a truthful support claim.
+A gate that did not execute is not GREEN. Work stops only for a real blocker: security/recovery risk, destructive ambiguity, missing required human action or credential, broken shared baseline, external dependency unavailable, or insufficient evidence for a truthful support claim.
 
 ## Delivery objective
 
-Optimize for **time to usable baseline**, not number of completed documents, branches, PRs, or theoretical phases.
+Optimize for **time to usable baseline**, not number of documents, branches, PRs or theoretical phases.
 
-Hermes Vault must be delivered incrementally:
+Preferred incremental progression:
 
 ```text
 architecture/recovery contract
@@ -38,62 +40,43 @@ Transit / PKI / JIT / dynamic secrets
 broad migration + production readiness
 ```
 
-Do not hold an early usable baseline until all later Vault capabilities are implemented.
+Do not hold an early useful baseline until every later Vault capability exists.
 
-## FAST DELIVERY topology
+## Work topology and WIP
 
-Normal execution uses:
+The project does **not** require a fixed number of lanes or agents.
+
+Parallel work is created only when outcomes are materially independent and reduce critical-path time. For the current Jarvas/Hermes environment, the default upper bound is:
 
 ```text
-5–6 development lanes
-+
-1 Controller / Integration lane
+active development WIP <= 5–6 lanes
 ```
 
-Use fewer lanes when dependency chains make more parallelism artificial. Do not create parallel work that merely increases rebases, CI pressure, or architectural divergence.
+Use fewer lanes whenever dependency chains make more parallelism artificial. A lane may be executed by a human, agent, automation, CI job or other implementation mechanism.
 
-### Controller / Integration lane
+### Integration Controller role
 
-The controller owns throughput, not feature development. It continuously:
+For concurrent delivery, one role owns integration throughput rather than feature volume. This is a role, not necessarily an agent.
+
+It continuously:
 
 1. reconciles `main`, PRs, CI, runtime evidence and roadmap state;
-2. identifies the current critical path;
-3. classifies failures;
-4. fixes or routes deterministic failures immediately;
-5. integrates GREEN work;
-6. revalidates the shared baseline;
-7. launches the next independent wave;
-8. maintains truthful evidence and support state.
+2. identifies the critical path and next usable baseline;
+3. keeps WIP bounded;
+4. classifies failures;
+5. fixes/routes deterministic failures immediately;
+6. integrates GREEN work;
+7. revalidates the shared baseline;
+8. opens the next safe work only when capacity exists;
+9. keeps support/evidence state truthful.
 
-A red lane does not freeze unrelated GREEN lanes unless it exposes a shared security, architecture, recovery, contract or `main` regression.
+A red lane does not freeze unrelated GREEN work unless it exposes a shared security, architecture, recovery, contract or `main` regression.
 
-## Waves, not serial backlog execution
+## Waves and vertical slices
 
-Work is grouped into **delivery waves** consisting of independent or weakly coupled outcomes.
+Work may be grouped into delivery waves when several independent outcomes compose one baseline. Waves are a convenience, not a mandatory development structure.
 
-Example:
-
-```text
-WAVE
-├── lane A: Vault runtime/TLS baseline
-├── lane B: audit + evidence
-├── lane C: snapshot/restore mechanics
-├── lane D: identity/policy contracts
-├── lane E: observability
-└── lane F: operator/runbook validation
-                 ↓
-        integration / acceptance
-                 ↓
-             baseline
-```
-
-The exact wave must be chosen from the live repository state. Never reopen already integrated work because an older plan mentions it.
-
-## Vertical delivery slices
-
-Prefer a thin end-to-end slice over broad unfinished foundations.
-
-For Hermes Vault, a valuable slice proves:
+Prefer thin end-to-end slices. For Hermes Vault, a valuable slice proves:
 
 ```text
 identity
@@ -105,13 +88,13 @@ identity
   → revoke/expiry/cleanup
 ```
 
-A component that exists only in isolation is not considered a delivered capability.
+A component that exists only in isolation is not a delivered capability.
+
+The first implementation should behave as a walking skeleton: the smallest safe end-to-end path through identity, policy, Vault and one real consumer before breadth is added.
 
 ## Fast gates before expensive gates
 
-Every lane must run the cheapest deterministic gates before consuming expensive CI or runtime acceptance.
-
-Order conceptually:
+Run the cheapest deterministic gates before costly CI/runtime acceptance:
 
 ```text
 syntax / format / lint
@@ -131,29 +114,25 @@ runtime acceptance
 recovery / rollback validation where required
 ```
 
-Do not use remote CI as a basic linter when the same failure can be found before push.
-
-Heavy jobs should depend on successful fast gates whenever the workflow supports it.
+Do not use remote CI as a basic linter when the same failure can be found before push. Heavy jobs should depend on successful fast gates whenever practical.
 
 ## Failure handling
 
-Failures are classified immediately.
-
-### Deterministic / local failure
+### Deterministic/local failure
 
 Examples: lint, formatting, schema, policy syntax, docs consistency, simple typing, deterministic unit test.
 
 ```text
-FAIL → inspect → patch → targeted retest → push → continue
+FAIL → inspect → root cause → patch → targeted retest → continue
 ```
 
-Do not perform blind retries.
+No blind retries.
 
 ### Product/integration failure
 
-Examples: Vault API behavior mismatch, lease cleanup failure, policy unexpectedly broad, consumer integration regression.
+Examples: Vault API mismatch, lease cleanup failure, policy unexpectedly broad, consumer integration regression.
 
-Isolate the lane, fix the root cause and continue independent lanes.
+Isolate the affected work, fix root cause and continue independent work if the shared baseline remains safe.
 
 ### Global blocker
 
@@ -163,16 +142,14 @@ Freeze promotion only for issues such as:
 - root/recovery material handling violation;
 - secret exposure;
 - fail-open authorization;
-- broken `main` shared baseline;
+- broken `main` baseline;
 - cross-tool credential isolation failure;
 - destructive state ambiguity;
 - required human/security decision.
 
 ## Definition of Delivery
 
-A work item may be code-complete without being delivered.
-
-A Hermes Vault capability is **delivered** only when the applicable chain is proven:
+Code completion is not delivery.
 
 ```text
 IMPLEMENTED
@@ -185,7 +162,7 @@ IMPLEMENTED
 = DELIVERED
 ```
 
-Support labels must remain truthful. Use explicit states such as:
+Use truthful states such as:
 
 ```text
 PLANNED
@@ -199,39 +176,33 @@ BLOCKED
 
 ## Product-specific first delivery targets
 
-### Delivery Target A — non-production Vault baseline
+### A — non-production Vault baseline
 
-Minimum useful outcome:
+Prove Vault startup, TLS, audit, health/readiness, snapshot and recovery design without exposing secret/recovery material.
 
-- Vault starts under the selected deployment model;
-- TLS enforced;
-- audit device operational;
-- health/readiness proven;
-- snapshot created and validated;
-- recovery design materially tested as far as the environment allows;
-- no secret/recovery material committed or exposed to the model.
-
-### Delivery Target B — workload identity slice
+### B — workload identity slice
 
 Prove one real workload identity with least privilege and negative tests.
 
-### Delivery Target C — first secret migration
+### C — first secret migration
 
-Migrate one non-critical secret end-to-end, prove consumer restart/use, rotation/rollback and legacy secret removal.
+Migrate one non-critical secret end to end, prove consumer use/restart, rotation/rollback and legacy-secret removal.
 
-### Delivery Target D — Credential Broker MVP
+### D — Credential Broker MVP
 
 Prove one real tool can request a bounded capability, consume it without exposing the underlying secret, and clean it up on success/cancellation.
 
-These targets should be versionable independently instead of waiting for full Phase 12 completion.
+Each target should be independently versionable rather than waiting for full production scope.
 
-## CI and repository rules
+## CI and integration rules
 
-- Prefer PR validation for feature branches and full post-merge validation on `main`; avoid equivalent duplicate CI triggers.
-- Separate fast quality gates from costly integration/runtime/security jobs where practical.
-- Preserve mandatory security and recovery gates; FAST DELIVERY changes ordering and duplication, not assurance requirements.
-- Merge automatically when all required gates are GREEN and no real blocker exists.
-- After every merge, validate `main` before promoting the next dependent baseline.
+- Prefer short-lived branches and PR validation.
+- Avoid equivalent duplicate `push` + `pull_request` CI where repository protection permits.
+- Separate fast quality gates from expensive integration/runtime jobs.
+- Preserve security and recovery gates; acceleration changes ordering/duplication, not assurance.
+- When concurrent GREEN PRs can invalidate each other, use merge-queue or equivalent serialized integration validation where available.
+- Merge automatically only when required gates actually executed and are GREEN.
+- Revalidate `main` after material integration.
 
 ## Evidence rule
 
@@ -246,30 +217,28 @@ WHAT remains unsupported/degraded?
 HOW is rollback/recovery performed?
 ```
 
-No executed gate means no claim of PASS.
+## Resume rule
 
-## Conversation / agent restart rule
-
-A new ChatGPT/Hermes execution session must not rely on remembered state. It must first reconcile:
+A resumed ChatGPT/Hermes/developer session first reconciles:
 
 ```text
 main + HEAD + PRs + CI + docs + runtime evidence
 ```
 
-Then resume the highest-priority safe wave according to this operating model.
+Conversation memory is advisory only.
 
-## Permanent execution algorithm
+## Permanent algorithm
 
 ```text
 DISCOVER
    ↓
 RECONCILE LIVE STATE
    ↓
-IDENTIFY CRITICAL PATH
+IDENTIFY NEXT USABLE BASELINE / CRITICAL PATH
    ↓
-FORM DELIVERY WAVE
+FORM MINIMUM USEFUL WORK SET
    ↓
-PARALLEL IMPLEMENTATION
+BOUNDED PARALLEL IMPLEMENTATION
    ↓
 FAST GATES
    ↓
@@ -285,7 +254,7 @@ BASELINE GREEN
    ↓
 VERSION + EVIDENCE
    ↓
-NEXT WAVE
+NEXT BASELINE
 ```
 
 This operating model remains active until explicitly superseded by a documented repository decision.
