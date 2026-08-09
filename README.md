@@ -1,101 +1,181 @@
 # Hermes Vault
 
-**Secrets, Identity & Trust Plane for Jarvas/Hermes**
+[![Role](https://img.shields.io/badge/role-secrets%20%2F%20identity%20%2F%20trust%20plane-0b7285)](docs/README.md)
+[![Status](https://img.shields.io/badge/status-architecture%20blueprint%20%2F%20not%20deployed-f59f00)](#current-state)
+[![Security](https://img.shields.io/badge/security-no%20secret%20to%20the%20model-b42318)](SECURITY.md)
+[![Target](https://img.shields.io/badge/target-HashiCorp%20Vault-5f3dc4)](docs/01-reference-architecture.md)
 
-Repositório canónico para desenhar, implementar e operar uma camada HashiCorp Vault integrada com Jarvas/Hermes, Hermes MCP Bridge V2, RITMO, dispatchers e ferramentas autenticadas.
+> Canonical design and implementation plan for a future **Secrets, Identity & Trust Plane** for Jarvas/Hermes, based on HashiCorp Vault.
 
-## Estado
+## Current state
 
-**Fase atual:** architecture & implementation blueprint.  
-**Implementação em produção:** ainda não iniciada.  
-**Objetivo de retoma:** permitir iniciar uma nova conversa e dizer apenas **“vamos implementar o HashiCorp Vault”**, usando este repositório como fonte de verdade.
+**Architecture and implementation blueprint. Production implementation has not started.**
 
-## Objetivo principal
+This repository is intentionally detailed enough to resume implementation safely in a future session, but it must not be read as proof that Vault, PKI, dynamic secrets or JIT privilege are already running on the Jarvas/Hermes host.
 
-Substituir progressivamente segredos estáticos espalhados por ficheiros, variáveis de ambiente e configurações locais por um plano centralizado de **segredos, identidade de workloads, autorização, criptografia, PKI, auditoria e recuperação**.
+| Area | Current state |
+|---|---|
+| Architecture / trust model | ✅ Documented |
+| Identity/auth/policy design | ✅ Documented |
+| Migration and recovery design | ✅ Documented |
+| Example policies/templates | ✅ Present, non-secret |
+| Vault runtime installation | ⏳ Not started |
+| Secret migration | ⏳ Not started |
+| Workload identity rollout | ⏳ Not started |
+| PKI / mTLS rollout | ⏳ Not started |
+| Production acceptance | ⏳ Not started |
 
-Princípios:
+## Objective
 
-1. **NO SECRET TO THE MODEL** — segredos não entram no contexto do ChatGPT/LLM.
-2. **IDENTITY + POLICY PER TOOL** — cada workload/MCP/tool possui identidade própria e mínimo privilégio.
-3. **SHORT-LIVED CAPABILITY WHEN POSSIBLE** — preferir tokens, certificados e credenciais temporárias.
-4. **JIT PRIVILEGE ELEVATION** — administração privilegiada apenas quando necessária e com TTL curto.
-5. **ROOT IS BREAK-GLASS ONLY** — root/recovery nunca são credenciais permanentes do Hermes.
-6. **AUDIT EVERYTHING** — acesso a segredos e operações privilegiadas deixam evidência auditável.
-7. **FAIL CLOSED** — ausência de identidade, policy, lease ou autorização válida bloqueia a operação.
+Progressively replace long-lived static credentials distributed across files, environment variables and local configuration with a centralized trust plane for:
 
-## Arquitetura alvo
+- secrets lifecycle;
+- workload identity and least privilege;
+- short-lived credentials where supported;
+- JIT privileged administration;
+- PKI and mTLS;
+- Transit encryption/signing/HMAC;
+- audit and evidence;
+- bootstrap, recovery and break-glass.
 
-```mermaid
-flowchart TD
-    U[Utilizador] --> C[ChatGPT]
-    C --> B[Hermes MCP Bridge V2]
-    B --> P[Intent / Batch Planner]
-    P --> E[Policy & Risk Engine]
-    E --> CB[Credential Broker]
-    CB --> V[HashiCorp Vault]
+## Security invariants
 
-    V --> VA[Vault Agent / Auth]
-    V --> KV[KV v2]
-    V --> PKI[PKI]
-    V --> TR[Transit]
-    V --> DS[Dynamic Secrets]
-    V --> AU[Audit]
-
-    CB --> GH[GitHub Tool]
-    CB --> GF[Grafana Tool]
-    CB --> CF[Cloudflare Tool]
-    CB --> MS[Planner / Outlook MCP]
-    CB --> HA[Home Assistant]
-    CB --> RT[RITMO / Dispatchers]
-
-    GH --> EV[Operational Evidence]
-    GF --> EV
-    CF --> EV
-    MS --> EV
-    HA --> EV
-    RT --> EV
-    TR --> EV
+```text
+NO SECRET TO THE MODEL
+IDENTITY + POLICY PER TOOL
+SHORT-LIVED CAPABILITY WHEN POSSIBLE
+JIT PRIVILEGE ELEVATION
+ROOT IS BREAK-GLASS ONLY
+AUDIT EVERYTHING
+FAIL CLOSED
 ```
 
-## Modelo de privilégio
+These are design constraints for implementation, not marketing statements.
 
-| Nível | Identidade | Finalidade |
-|---|---|---|
-| L1 | `hermes-runtime` | Operação normal e consumo de capacidades autorizadas |
-| L2 | `hermes-controller` | Gestão de integrações, leases, credenciais e operações de controlo |
-| L3 | `hermes-vault-admin` | Administração JIT do Vault com TTL curto e auditoria reforçada |
-| L4 | `root/recovery` | Break-glass e recuperação catastrófica; fora do Hermes |
+## Target system context
 
-## Conteúdo do repositório
+```mermaid
+flowchart LR
+    U[User] --> C[ChatGPT / authorized client]
+    C --> B[Hermes MCP Bridge V2]
+    B --> PLAN[Deterministic execution plan]
+    PLAN --> CB[Credential Broker]
+    CB --> V[HashiCorp Vault]
+    V --> T[Short-lived capability / crypto operation]
+    T --> TOOL[Authorized tool / integration]
+    TOOL --> E[Operational evidence]
 
-- [`docs/00-context-goals.md`](docs/00-context-goals.md) — contexto, objetivos e não-objetivos.
-- [`docs/01-reference-architecture.md`](docs/01-reference-architecture.md) — arquitetura e trust boundaries.
-- [`docs/02-vault-capabilities.md`](docs/02-vault-capabilities.md) — catálogo de capacidades e aplicabilidade ao Jarvas/Hermes.
-- [`docs/03-identity-auth-policy.md`](docs/03-identity-auth-policy.md) — identidades, auth methods, policies e least privilege.
-- [`docs/04-hermes-integration.md`](docs/04-hermes-integration.md) — Credential Broker, direct-tool execution e batch execution.
-- [`docs/05-jit-privilege.md`](docs/05-jit-privilege.md) — privilege elevation, admin temporário e approvals.
-- [`docs/06-pki-mtls.md`](docs/06-pki-mtls.md) — PKI, certificados curtos e mTLS entre serviços.
-- [`docs/07-transit-evidence.md`](docs/07-transit-evidence.md) — Transit, HMAC, signing e evidência criptográfica.
-- [`docs/08-audit-observability.md`](docs/08-audit-observability.md) — auditoria, métricas, Grafana e deteção de abuso.
-- [`docs/09-bootstrap-recovery.md`](docs/09-bootstrap-recovery.md) — bootstrap, unseal, recovery e break-glass.
-- [`docs/10-operations-runbooks.md`](docs/10-operations-runbooks.md) — operação diária e runbooks.
-- [`docs/11-migration-plan.md`](docs/11-migration-plan.md) — migração progressiva dos segredos atuais.
-- [`docs/12-implementation-roadmap.md`](docs/12-implementation-roadmap.md) — fases, gates e critérios de aceitação.
-- [`docs/13-security-decisions.md`](docs/13-security-decisions.md) — decisões arquiteturais e restrições.
-- [`docs/14-references.md`](docs/14-references.md) — documentação oficial de referência.
-- [`docs/15-delivery-operating-model.md`](docs/15-delivery-operating-model.md) — FAST DELIVERY, multi-lane, Controller/Integration, waves, gates e Definition of Delivery.
+    V -. secret value never enters model context .-> C
+```
 
-## Resultado pretendido
+## Target Vault capabilities
 
-No estado final, um pedido como:
+```mermaid
+flowchart TB
+    V[Vault] --> KV[KV v2]
+    V --> DS[Dynamic secrets]
+    V --> PKI[PKI / short-lived certificates]
+    V --> TR[Transit / signing / HMAC]
+    V --> AUTH[Workload authentication]
+    V --> POL[Policies]
+    V --> AUD[Audit devices]
+    V --> REC[Recovery / break-glass]
+```
 
-> “Verifica o CI no GitHub, consulta o email do deployment e compara com as métricas do Grafana.”
+Not every engine is automatically required. Implementation should enable only capabilities justified by real consumers and operational evidence.
 
-pode ser decomposto pela Hermes Bridge V2 em operações independentes. Cada executor autentica-se com identidade própria, obtém do Vault apenas a capacidade necessária, executa, produz evidência e perde essa capacidade no fim do TTL ou lease.
+## Privilege model
 
-O ChatGPT controla a intenção e o plano de execução; **não recebe nem conserva os segredos subjacentes**.
+| Level | Identity | Intended scope |
+|---:|---|---|
+| L1 | `hermes-runtime` | Routine consumption of explicitly allowed capabilities |
+| L2 | `hermes-controller` | Integration/lease/credential control operations |
+| L3 | `hermes-vault-admin` | Temporary JIT Vault administration with short TTL and stronger approval/audit |
+| L4 | root / recovery | Catastrophic recovery and break-glass, outside Hermes automation |
 
-## Regra de implementação
+```mermaid
+flowchart LR
+    L1[L1 runtime] -->|bounded capability| V[Vault]
+    L2[L2 controller] -->|governed control| V
+    L3[L3 JIT admin] -->|short TTL + approval| V
+    L4[L4 break-glass] -. human recovery only .-> V
+```
 
-Nenhum secret real deve ser versionado neste repositório. Exemplos de configuração usam apenas placeholders, referências a paths Vault ou nomes fictícios.
+## Target request flow
+
+```mermaid
+sequenceDiagram
+    participant C as ChatGPT / client
+    participant B as Hermes Bridge
+    participant V as Vault / Credential Broker
+    participant T as Tool
+    participant E as Evidence
+
+    C->>B: semantic intent
+    B->>B: resolve capability + policy
+    B->>V: request exact scoped credential/capability
+    V-->>B: short-lived handle / authorized crypto operation
+    B->>T: execute without exposing secret to model
+    T-->>B: bounded result
+    B->>E: provenance / audit reference
+    B-->>C: semantic result
+```
+
+## What this repository contains today
+
+- architecture, trust-boundary and threat-model documentation;
+- identity/auth/policy design;
+- Hermes/Bridge integration design;
+- JIT privilege, PKI/mTLS and Transit design;
+- audit/observability model;
+- bootstrap/unseal/recovery guidance;
+- migration plan and implementation roadmap;
+- security decisions and official references;
+- example HCL policies containing no real secrets;
+- sanitized inventory and workload-identity templates;
+- implementation checklist and a dedicated resume point.
+
+## What it does **not** contain today
+
+- a deployed Vault server/cluster;
+- initialized/unsealed production storage;
+- real Vault tokens, recovery keys or unseal material;
+- migrated production secrets;
+- active dynamic-secret engines;
+- active PKI/mTLS issuance;
+- a live Credential Broker;
+- production evidence proving the target architecture.
+
+## Documentation
+
+Start with the [documentation index](docs/README.md).
+
+Recommended reading order:
+
+1. [`docs/00-context-goals.md`](docs/00-context-goals.md)
+2. [`docs/01-reference-architecture.md`](docs/01-reference-architecture.md)
+3. [`docs/03-identity-auth-policy.md`](docs/03-identity-auth-policy.md)
+4. [`docs/04-hermes-integration.md`](docs/04-hermes-integration.md)
+5. [`docs/09-bootstrap-recovery.md`](docs/09-bootstrap-recovery.md)
+6. [`docs/12-implementation-roadmap.md`](docs/12-implementation-roadmap.md)
+7. [`docs/13-security-decisions.md`](docs/13-security-decisions.md)
+8. [`docs/15-threat-model.md`](docs/15-threat-model.md)
+
+For resuming implementation, use [`RESUME.md`](RESUME.md) and [`IMPLEMENTATION-CHECKLIST.md`](IMPLEMENTATION-CHECKLIST.md).
+
+## Implementation gate
+
+The first real implementation phase must begin with **read-only discovery** of the current Jarvas/Hermes environment. Historical assumptions in this repository must be revalidated before installation or migration.
+
+No Vault installation or secret migration should begin until the Phase 0 entrance criteria are satisfied:
+
+```text
+DISCOVERY_COMPLETE
+NO_SECRET_IN_REPO
+TARGET_ARCHITECTURE_APPROVED
+RECOVERY_DESIGN_DEFINED
+```
+
+## Repository safety rule
+
+No real secret, token, password, unseal/recovery key, certificate private key or reusable credential may be committed here. Examples must use fictitious names, placeholders or Vault path references only.
