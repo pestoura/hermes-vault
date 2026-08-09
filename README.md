@@ -84,6 +84,7 @@ flowchart TD
 - [`docs/12-implementation-roadmap.md`](docs/12-implementation-roadmap.md) — fases, gates e critérios de aceitação.
 - [`docs/13-security-decisions.md`](docs/13-security-decisions.md) — decisões arquiteturais e restrições.
 - [`docs/14-references.md`](docs/14-references.md) — documentação oficial de referência.
+- [`docs/15-delivery-operating-model.md`](docs/15-delivery-operating-model.md) — FAST DELIVERY, multi-lane, Controller/Integration, waves, gates e Definition of Delivery.
 
 ## Resultado pretendido
 
