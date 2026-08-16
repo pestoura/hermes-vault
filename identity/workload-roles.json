@@ -1,0 +1,55 @@
+{
+  "schema": "hermes-vault-workload-identities/v1",
+  "auth_method": "approle",
+  "roles": {
+    "hermes-runtime": {
+      "policy": "hermes-runtime",
+      "token_no_default_policy": true,
+      "token_ttl": "10m",
+      "token_max_ttl": "20m",
+      "secret_id_num_uses": 1,
+      "secret_id_ttl": "10m",
+      "wrap_ttl": "5m",
+      "direct_kv": false
+    },
+    "hermes-controller": {
+      "policy": "hermes-controller",
+      "token_no_default_policy": true,
+      "token_ttl": "10m",
+      "token_max_ttl": "30m",
+      "secret_id_num_uses": 1,
+      "secret_id_ttl": "10m",
+      "wrap_ttl": "5m",
+      "direct_kv": false
+    },
+    "jarvas-operations": {
+      "policy": "jarvas-operations",
+      "token_no_default_policy": true,
+      "token_ttl": "15m",
+      "token_max_ttl": "30m",
+      "secret_id_num_uses": 1,
+      "secret_id_ttl": "10m",
+      "wrap_ttl": "5m",
+      "direct_kv": false
+    },
+    "github-tool": {
+      "policy": "github-tool",
+      "token_no_default_policy": true,
+      "token_ttl": "10m",
+      "token_max_ttl": "20m",
+      "secret_id_num_uses": 1,
+      "secret_id_ttl": "10m",
+      "wrap_ttl": "5m",
+      "direct_kv": true,
+      "kv_data_path": "secret/data/jarvas/github/runtime",
+      "kv_metadata_path": "secret/metadata/jarvas/github/runtime"
+    }
+  },
+  "live_status": {
+    "configured": false,
+    "AUTH_PASS": false,
+    "LEAST_PRIVILEGE_PASS": false,
+    "NEGATIVE_TEST_PASS": false,
+    "NO_GLOBAL_WILDCARD": false
+  }
+}

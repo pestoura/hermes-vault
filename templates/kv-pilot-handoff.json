@@ -1,0 +1,27 @@
+{
+  "schema": "hermes-vault-kv-pilot-handoff/v1",
+  "status": "AWAITING_LIVE_DISCOVERY",
+  "inventory_id": null,
+  "owner": null,
+  "consumer": null,
+  "provider": null,
+  "classification": null,
+  "target_path": null,
+  "acceptance_test_ref": null,
+  "rollback_ref": null,
+  "legacy_reference": null,
+  "rotation_supported": null,
+  "live_gates": {
+    "KV_PILOT_PASS": false,
+    "ROTATION_PASS": false,
+    "LEGACY_SECRET_REMOVED": false,
+    "RESTART_PASS": false
+  },
+  "constraints": {
+    "real_credentials_allowed": false,
+    "pilot_preselected": false,
+    "owner_validation_required": true,
+    "rollback_required": true,
+    "rotation_before_legacy_removal_required": true
+  }
+}

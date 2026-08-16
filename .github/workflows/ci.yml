@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, epic-00/discovery-prerequisites]
+    branches: [main, epic-00/discovery-prerequisites, epic-01/baseline-adoption]
   workflow_dispatch:
 
 permissions:
@@ -28,6 +28,12 @@ jobs:
 
       - name: Validate immutable LAB_L1 source contract
         run: python tools/validate_lab_l1_source.py baseline/lab-l1-source.json
+
+      - name: Validate workload identity contract
+        run: python tools/validate_identity_contract.py identity/workload-roles.json
+
+      - name: Lint Vault workload policies
+        run: python tools/lint_vault_policies.py identity/policies
 
       - name: Check shell syntax
         run: find operations -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
