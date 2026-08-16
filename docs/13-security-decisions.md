@@ -131,3 +131,39 @@ Fallback só existe se explicitamente desenhado e testado.
 **Decisão:** a credencial inicial usada por cada workload para autenticar no Vault deve ser tratada como problema de bootstrap próprio.
 
 AppRole SecretID, certificado, JWT ou outro bootstrap material não pode ser simplesmente movido para outro `.env` e considerado resolvido.
+
+---
+
+## ADR-018 — VaultCredentialProvider in-process na Hermes MCP Bridge V2
+
+**Estado:** APROVADO para o MVP do EPIC-03.
+
+**Decisão:** implementar `VaultCredentialProvider` in-process dentro de `pestoura/hermes-mcp-bridge`, reutilizando a arquitetura V2 existente:
+
+`ProviderGateway → ProviderCredentialBroker → VaultCredentialProvider → Vault → AuthorizationHandle → provider adapter`.
+
+O `hermes-vault` mantém contratos, provenance, configuração de identidade/policy, runbooks e evidência sanitizada; não duplica `ProviderCredentialBroker`, `AuthorizationHandle`, `ProviderGateway` nem adapters da Bridge.
+
+A interface inicial do provider é fechada a `capability.status`, `capability.request` e `capability.revoke`, resolvida por `(provider_id, credential_capability_id)`. Isto é uma interface interna e não acrescenta novos MCP tools nem altera automaticamente a superfície efetiva de 27 tools.
+
+**Primeira vertical slice:** `github-tool` / credential capability `github.read`, preservando a capability operacional existente `github.repo_read` na Bridge V2.
+
+**Proibições:**
+
+- não criar `secret.read(path=*)` nem equivalente genérico;
+- o modelo nunca recebe token, password, SecretID, Vault token, `client_secret`, private key ou wrapped payload após unwrap;
+- nenhum fallback permissivo para ficheiro/env quando Vault é a origem selecionada;
+- nenhum segredo em `repr`, `str`, exceções, audit ou evidence.
+
+**Alternativas consideradas e fora do MVP:**
+
+1. Credential Broker microservice separado;
+2. Unix socket broker;
+3. sidecar por tool;
+4. Vault Agent;
+5. Kubernetes workload identity;
+6. multi-Vault / HA Broker.
+
+Estas opções só devem ser reabertas perante um requisito operacional comprovado que a abordagem in-process não consiga satisfazer.
+
+**Histórico:** a branch `epic-03/credential-broker-core` / PR #17 implementou uma abordagem provider-neutral com `broker/` e `bridge_v2/` dentro de `hermes-vault`. Essa topologia fica **SUPERSEDED** por este ADR e não deve ser merged, rebased ou reutilizada como implementação da Opção A. Ideias de testes/lifecycle podem ser reaproveitadas apenas como requisitos, nunca por cópia da arquitetura duplicada.
