@@ -18,7 +18,7 @@
     "RESTART_PASS": false
   },
   "constraints": {
-    "real_secret_values_allowed": false,
+    "real_credentials_allowed": false,
     "pilot_preselected": false,
     "owner_validation_required": true,
     "rollback_required": true,
