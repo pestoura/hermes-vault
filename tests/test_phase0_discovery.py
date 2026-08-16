@@ -8,18 +8,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.phase0_discovery import (
-    MAX_CAPTURE_BYTES,
-    run_command,
-    sanitize_text,
-    write_report_atomic,
-)
+from tools.phase0_discovery import MAX_CAPTURE_BYTES, run_command, sanitize_text, write_report_atomic
 
 
 class CommandContractTests(unittest.TestCase):
     def test_run_command_uses_argv_shell_false_and_timeout(self) -> None:
         completed = mock.Mock(returncode=0, stdout="ok", stderr="")
-        with mock.patch("tools.phase0_discovery.subprocess.run", return_value=completed) as mocked:
+        with mock.patch("tools.phase0_core.subprocess.run", return_value=completed) as mocked:
             obs = run_command(["/usr/bin/uname", "-s"], timeout_s=1.25)
         self.assertEqual(obs.status, "ok")
         args, kwargs = mocked.call_args
@@ -32,17 +27,14 @@ class CommandContractTests(unittest.TestCase):
     def test_run_command_bounds_output(self) -> None:
         oversized = "x" * (MAX_CAPTURE_BYTES + 100)
         completed = mock.Mock(returncode=0, stdout=oversized, stderr=oversized)
-        with mock.patch("tools.phase0_discovery.subprocess.run", return_value=completed):
+        with mock.patch("tools.phase0_core.subprocess.run", return_value=completed):
             obs = run_command(["/bin/echo", "safe"])
         self.assertLessEqual(len(obs.stdout.encode()), MAX_CAPTURE_BYTES)
         self.assertLessEqual(len(obs.stderr.encode()), MAX_CAPTURE_BYTES)
         self.assertTrue(obs.truncated)
 
     def test_run_command_timeout_is_explicit(self) -> None:
-        with mock.patch(
-            "tools.phase0_discovery.subprocess.run",
-            side_effect=subprocess.TimeoutExpired(["x"], 1),
-        ):
+        with mock.patch("tools.phase0_core.subprocess.run", side_effect=subprocess.TimeoutExpired(["x"], 1)):
             obs = run_command(["/bin/false"], timeout_s=1)
         self.assertEqual(obs.status, "timeout")
         self.assertIsNone(obs.returncode)
