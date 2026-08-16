@@ -46,7 +46,7 @@ raise SystemExit(0 if "root" in policies else 1)
 }
 
 audit_probe() {
-  vault audit list -format=json | python3 -c '
+  vault audit list -detailed -format=json | python3 -c '
 import json, sys
 obj = json.load(sys.stdin)
 entry = obj.get("lab-l1-file/")
