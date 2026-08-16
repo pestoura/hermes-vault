@@ -4,19 +4,19 @@ Utilizar esta checklist quando a implementação for iniciada.
 
 ## 0. Pre-flight
 
-- [ ] Ler README e `docs/12-implementation-roadmap.md`.
-- [ ] Confirmar versão/edição Vault pretendida.
-- [ ] Confirmar que nenhum secret real será colocado no Git.
-- [ ] Criar branch de implementação.
+- [x] Ler README e `docs/12-implementation-roadmap.md`.
+- [x] Confirmar versão/edição Vault pretendida.
+- [x] Confirmar que nenhum secret real será colocado no Git.
+- [x] Criar branch de implementação.
 - [ ] Registar execution/plan IDs se executado via Hermes.
 
 ## 1. Discovery
 
 - [ ] Inventariar consumidores e secret references.
-- [ ] Preencher `templates/secret-inventory.yaml` sem valores secretos.
-- [ ] Classificar static/dynamic/PKI/Transit/bootstrap.
-- [ ] Identificar owners e rollback.
-- [ ] Mapear tool identities.
+- [x] Preparar `templates/secret-inventory.yaml` sem valores secretos.
+- [x] Implementar classificação static/dynamic/PKI/Transit/bootstrap.
+- [ ] Identificar owners e rollback a partir de evidência live.
+- [ ] Mapear tool identities a partir de evidência live.
 
 ## 2. Vault baseline
 
@@ -128,3 +128,17 @@ Utilizar esta checklist quando a implementação for iniciada.
 - [ ] Audit PASS.
 - [ ] NO_SECRET_TO_MODEL PASS.
 - [ ] Tag/release criada.
+
+## Phase 0 repository implementation status — 2026-08-16
+
+- [x] Read-only discovery collector contract implemented.
+- [x] Secret-reference parser emits names/locations only; synthetic leakage tests included.
+- [x] Host, storage, systemd, Docker and listener collectors implemented with bounded allowlists.
+- [x] TLS public-certificate metadata and Vault prerequisite observation implemented.
+- [x] Versioned report and fail-closed `DISCOVERY_COMPLETE` evaluator implemented.
+- [x] Repository CI contract prepared.
+- [ ] Live Jarvas discovery executed and validated.
+- [ ] `DISCOVERY_COMPLETE` accepted from live evidence.
+- [ ] `NO_SECRET_IN_REPO` accepted by repository gate/review.
+- [ ] `TARGET_ARCHITECTURE_APPROVED` recorded by its authority.
+- [ ] `RECOVERY_DESIGN_DEFINED` accepted by its authority.
