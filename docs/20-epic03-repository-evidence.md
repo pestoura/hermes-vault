@@ -24,7 +24,8 @@ Bind the EPIC-03 Vault contract to the exact companion implementation in `pestou
 - exception-context tests-only head: `f7f4f8f79ec5b7092fd49492539b6f206e710ffc`
 - context-detachment implementation: `38b8163c651903ffaa89b9a74a6324c293545aac`
 - apply/cleanup lifecycle tests-only head: `b5c61ebc3037feda2ca55e4d1ad9099dc81cd80a`
-- current Bridge implementation head: `c141245ecedc6fb093b3a4d9e95978ef33de81f9`
+- prior Bridge implementation head (gateway fix lane): `c141245ecedc6fb093b3a4d9e95978ef33de81f9`
+- final Bridge head (lint-only fix; exact final head this evidence binds to): `88cbd915a5158e1fa27d15eaa939ab29b1f5aba3`
 
 The old `hermes-vault` PR #17 / `epic-03/credential-broker-core` remains **SUPERSEDED — DO NOT MERGE**.
 
@@ -191,19 +192,22 @@ Comparison `38b8163... -> c141245...` is exactly three commits ahead and changes
 
 No architecture topology, public MCP tool surface, Vault path contract or live authority state is changed.
 
-## Hosted CI — account-level external blocker
+## Hosted CI — account-level external blocker (final head `88cbd915...`)
 
-The Bridge repository was temporarily made public and new commits were pushed after that change. This did **not** clear the Actions restriction.
+For final Bridge head `88cbd915a5158e1fa27d15eaa939ab29b1f5aba3`, GitHub Actions produced two pull_request runs, both concluded `failure`:
 
-For current head `c141245...`, CI run `31976482733` created jobs for Python 3.11, Python 3.12 and secret scan, but they did not start a runner (`steps=[]`, `runner_id=0`). GitHub states that the jobs were not started because recent account payments failed or the spending limit must be increased. The dependent image / isolated acceptance / Trivy / SBOM job was skipped.
+- `CI` run `31979987776` (2026-08-16T23:44:40Z): jobs `test (3.11)`, `secret scan (tree + history)`, `test (3.12)` all had `runner_id=0`, `steps=[]`, ~2s duration; dependent `image / isolated acceptance / trivy / sbom` skipped.
+- `Release governance` run `31979987809` (2026-08-16T23:44:40Z): job `JDS-002 change / validation records` had `runner_id=0`, `steps=[]`, ~3s.
 
-Classification: **`BLOCKED_EXTERNAL_BILLING`** — not code failure and not PASS.
+Every failed job carries GitHub's annotation: *"The job was not started because recent account payments have failed or your spending limit needs to be increased."* The Bridge repository was temporarily made public and the final commit was pushed after that, which did **not** clear the Actions restriction.
 
-The public GitHub tarball endpoint is visible but the current connector returns no archive bytes/file reference, and the local execution runtime in this session has no outbound GitHub network path. The Hermes MCP binding is also not currently exposed in this session.
+Classification: **`BLOCKED_EXTERNAL_BILLING`** — jobs never executed; not a code failure and not PASS.
 
-## Current gate state
+No hosted-CI green exists for `88cbd915...`. PR #110 remains draft / open / unmerged pending a governance policy on hosted CI. The full repository-suite PASS results below were produced locally on the exact final head, not via hosted CI.
 
-At Bridge head `c141245ecedc6fb093b3a4d9e95978ef33de81f9`:
+## Current gate state — exact final head `88cbd915a5158e1fa27d15eaa939ab29b1f5aba3`
+
+Local exact-head verification was executed against `88cbd915...` (the lint-only final fix over `c141245...`). It is not hosted-CI output.
 
 | Gate / verification | State |
 |---|---|
@@ -211,28 +215,30 @@ At Bridge head `c141245ecedc6fb093b3a4d9e95978ef33de81f9`:
 | exception-context reduced RED/GREEN | PASS as targeted evidence |
 | apply/cleanup lifecycle reduced RED/GREEN | PASS as targeted evidence |
 | exact current modified-block source review | COMPLETE |
-| full-checkout review-hardening | NOT_RUN current head |
-| all EPIC-03 targeted | NOT_RUN current head |
-| Phase 7 acceptance | NOT_RUN current head |
-| production activation | NOT_RUN current head |
-| Ruff | NOT_RUN current head |
-| compileall | NOT_RUN current head |
-| full pytest | NOT_RUN current head |
+| review-hardening (exact-head) | 9 passed |
+| EPIC-03 aggregate (exact-head) | 27 passed |
+| Phase 7 acceptance (exact-head) | 36 passed |
+| production activation (exact-head) | 24 passed |
+| ruff check src tests | PASS |
+| compileall | PASS |
+| full pytest (exact-head) | 3080 passed, 2 pre-existing warnings, 0 failed |
+| ShellCheck rollout tests | 3 passed |
+| local secret scan `scripts/v2_phase9_secret_scan.py --history-commits 25` | scanned=true, finding_count=0, tree files=549, history commits=25 |
+| synthetic EPIC-03 sentinels | 4 identifiers checked, all ABSENT from sanitized scope |
+| TDD lint finding | initial ruff 8 violations; RED; minimal lint fix; GREEN; `88cbd915...` |
+| formal final review after lint fix | no behavioral/security issue found |
 | hosted CI | BLOCKED_EXTERNAL_BILLING |
 
-No historical GREEN gate is automatically attributed to the current head.
+No live Vault runtime operation occurred for `88cbd915...`.
 
 ## Required next repository sequence
 
-1. obtain an approved full-checkout executor;
-2. execute `tests/test_v2_epic03_vault_review_hardening.py` on the exact final Bridge head;
-3. execute all EPIC-03 targeted tests;
-4. execute Phase 7 integration acceptance;
-5. execute production activation tests;
-6. execute Ruff, compileall and full pytest on the exact final head;
-7. perform formal final code review against canonical base and exact final head;
-8. update this evidence with final exact-SHA outputs;
-9. do not merge while mandatory hosted CI remains externally blocked unless a separate governance decision explicitly defines an alternative release gate.
+1. local exact-head execution against `88cbd915...` is complete (see Current gate state above);
+2. do not attribute any historical GREEN to the prior head without fresh exact-head evidence — resolved: exact-head runs executed;
+3. perform no live Vault runtime operation;
+4. do not merge while mandatory hosted CI remains externally blocked unless a separate governance decision explicitly defines an alternative release gate.
+
+PR #18 remains draft / open / unmerged and must stay so pending the hosted-CI governance decision.
 
 ## Live state — unchanged
 
