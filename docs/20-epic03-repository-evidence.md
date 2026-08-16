@@ -18,185 +18,163 @@ Bind the EPIC-03 Vault contract to the exact companion implementation in `pestou
 - branch: `epic-03/vault-credential-provider`
 - PR: `#110` (draft / open / unmerged)
 - exact base SHA: `3717bd5469b061a44294b27e1a7510d477d3752b`
-- last previously accepted GREEN head: `da7d16b5e162b2f110062b40a5b510c1af23b4f8`
-- first review-tests / verified RED head: `72f350590b0f24e1f235c95a462b37efea222306`
-- minimal production candidate: `152da7959781b47725bac20e91ff287e81a0a985`
-- current tests-only review head: `f7f4f8f79ec5b7092fd49492539b6f206e710ffc`
+- last previously accepted full GREEN: `da7d16b5e162b2f110062b40a5b510c1af23b4f8`
+- verified review RED head: `72f350590b0f24e1f235c95a462b37efea222306`
+- first cleanup/error-redaction candidate: `152da7959781b47725bac20e91ff287e81a0a985`
+- exception-context tests-only head: `f7f4f8f79ec5b7092fd49492539b6f206e710ffc`
+- current implementation head: `38b8163c651903ffaa89b9a74a6324c293545aac`
 
-The old `hermes-vault` PR #17 / `epic-03/credential-broker-core` is **SUPERSEDED** architecture and must not be merged into this lane.
+The old `hermes-vault` PR #17 / `epic-03/credential-broker-core` remains **SUPERSEDED — DO NOT MERGE**.
 
-## Accepted TDD evidence through `da7d16b5...`
+## Accepted historical GREEN
 
-### RED 1 — provider-backed broker lifecycle
-
-Exact test head `46ec7071067d279e4deeb770ba9e91cb266891e3`:
-
-- `8 failed`;
-- all failures caused by missing `ProviderCredentialBroker.bind_provider`;
-- no environment/import failure.
-
-Classification: **VALID FEATURE-CAUSAL RED**.
-
-### GREEN 1
-
-Head `599efcbd336f52a05addfc2effc501fb16329c2b`:
-
-- EPIC-03 targeted: `8/8 PASS`;
-- Phase 7 integration acceptance: `36/36 PASS`.
-
-### RED 2 — concrete VaultCredentialProvider
-
-Exact test head `3e76a9662a1847672c4d29055c09822c9a617ab0`:
-
-- existing lifecycle tests: `8/8 PASS`;
-- concrete provider tests: `8 FAIL`;
-- all new failures caused by absent `hermes_mcp_bridge.v2.vault_credentials`.
-
-Classification: **VALID FEATURE-CAUSAL RED**.
-
-### GREEN 2
-
-Head `3503a4e89249ba324e82430192a52c8de0e7797c`:
-
-- EPIC-03 broker/provider: `16/16 PASS`;
-- Phase 7 integration acceptance: `36/36 PASS`.
-
-### Hardening GREEN
-
-Content committed as `da7d16b5e162b2f110062b40a5b510c1af23b4f8`:
+At `da7d16b5...` only:
 
 - EPIC-03 broker/provider/hardening: `18/18 PASS`;
 - Phase 7 integration acceptance: `36/36 PASS`;
-- production activation: `24/24 PASS`.
+- production activation: `24/24 PASS`;
+- batch: successful parallel requests, distinct request-scoped grants, independent cleanup and sanitized result/audit.
 
-Batch evidence:
+These PASS labels are not attributed to the current lane until fresh final-head verification exists.
 
-- aggregate `SUCCESS`;
-- both steps `SUCCESS`;
-- `max_observed_inflight >= 2`;
-- two distinct request-scoped grants;
-- independent cleanup for each grant;
-- two provider calls / two credential resolutions;
-- synthetic sentinel absent from results and audit.
+## Verified review-hardening RED
 
-These PASS labels belong only to `da7d16b5...` until the final current lane receives fresh exact-head verification.
-
-## Security review hardening — verified causal RED
-
-Tests at exact head `72f350590b0f24e1f235c95a462b37efea222306` covered cleanup and error redaction.
-
-Exact checkout execution:
+Exact Bridge checkout `72f350590b0f24e1f235c95a462b37efea222306` executed:
 
 ```text
 PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests/test_v2_epic03_vault_review_hardening.py
 ```
 
-Result: **7 failed / 0 passed**. All seven failures were feature-causal:
+Result: **7 failed / 0 passed**, all feature-causal:
 
-- broad rejected record cleanup count `0`, expected `1`;
-- `ready=False` record cleanup count `0`, expected `1`;
-- broker preserved synthetic backend `RuntimeError` as `__cause__`;
-- Vault request preserved synthetic backend `RuntimeError` as `__cause__`;
-- Vault revoke preserved synthetic backend `RuntimeError` as `__cause__`;
-- per-grant `revoke()` leaked the synthetic backend `RuntimeError`;
-- gateway cleanup failure leaked the synthetic backend `RuntimeError` before the required terminal outcome.
-
-The only warning was an unrelated pytest configuration warning for `asyncio_mode`.
+1. broad/cross-domain provider-issued record rejected without cleanup;
+2. `ready=False` provider-issued record rejected without cleanup;
+3. broker retained secret-bearing backend error in the exception chain;
+4. Vault request retained secret-bearing backend error in the exception chain;
+5. Vault revoke retained secret-bearing backend error in the exception chain;
+6. per-grant cleanup leaked the raw backend error;
+7. gateway cleanup failure escaped before the terminal sanitized audit outcome.
 
 Classification: **VALID TDD RED**.
 
-## Minimal production candidate
+## First minimal production candidate
 
-The production candidate is:
+`152da7959781b47725bac20e91ff287e81a0a985` added only the behavior required by that RED:
 
-`152da7959781b47725bac20e91ff287e81a0a985`
-
-It is exactly three commits ahead of the verified RED head and changes only:
-
-- `src/hermes_mcp_bridge/v2/provider_credentials.py`;
-- `src/hermes_mcp_bridge/v2/vault_credentials.py`;
-- `src/hermes_mcp_bridge/v2/provider_gateway.py`.
-
-Candidate behavior:
-
-- cleans provider-issued records rejected after issuance or marked `ready=False`;
-- suppresses explicit backend exception chaining at broker/provider boundaries;
-- wraps request-scoped grant `apply`/`revoke` with sanitized `CredentialError` conversion;
-- fails closed on invalid grants with best-effort cleanup;
-- contains gateway cleanup failure and preserves terminal audit flow;
+- cleanup of provider-issued records rejected after issuance or marked `ready=False`;
+- sanitized broker/provider backend exception conversion;
+- sanitized request-scoped grant `apply`/`revoke` callbacks;
+- fail-closed invalid-grant handling;
+- gateway cleanup-failure containment and terminal audit semantics;
 - read cleanup failure => `ERROR / E-CRED-UNAVAILABLE / payload={}`;
 - write cleanup failure => `UNKNOWN / E-CRED-UNAVAILABLE / payload={}`.
 
-A reconstructed semantic harness covering the original seven review cases is GREEN. This is **auxiliary evidence only** and is not treated as repository exact-head PASS.
+A reduced semantic harness for those original cases was GREEN. This was auxiliary evidence only, not full exact-head verification.
 
-## Additional review finding — secret-bearing `__context__`
+## Additional security finding — Python `__context__`
 
-The canonical EPIC-03 secret boundary prohibits secret material in an `exception`, not only in audit/result serialization.
+Review identified that `raise CredentialError(...) from None` clears explicit `__cause__` and suppresses display of the previous exception but still retains the caught backend exception in `__context__` when raised from inside the `except` block.
 
-Python `raise CredentialError(...) from None` removes the explicit `__cause__` and suppresses rendering of the previous exception, but the caught backend exception remains reachable in `__context__` while raising inside the `except` block.
+The EPIC-03 secret boundary prohibits secret material in an exception object, so a backend exception containing credential material must not remain reachable through `__context__`.
 
-Therefore a backend exception containing credential material can remain attached to the supposedly sanitized exception object.
+Tests-only head `f7f4f8f79ec5b7092fd49492539b6f206e710ffc` added four `__context__ is None` assertions covering:
 
-A tests-only commit was added:
+- broker provider request;
+- Vault request;
+- Vault revoke;
+- request-scoped grant cleanup.
 
-`f7f4f8f79ec5b7092fd49492539b6f206e710ffc`
+No production code changed in that commit.
 
-It is one commit ahead of `152da795...` and changes only `tests/test_v2_epic03_vault_review_hardening.py`, adding four `__context__ is None` assertions to the broker, Vault request, Vault revoke and per-grant cleanup exception-redaction cases.
+## Reduced causal RED/GREEN for exception context
 
-No production code was changed after this finding.
+The current ChatGPT runtime still cannot clone GitHub directly and the hosted Actions runner remains account-level billing blocked. The specific Python exception property was therefore exercised in a reduced harness using the production candidate behavior and a synthetic sentinel.
 
-Current state:
+### RED
 
-- semantic expectation: the four new assertions fail against `152da795...`;
-- exact-head exception-context RED: **NOT_RUN**;
-- production fix for exception context: **NOT_STARTED**.
+Before the context fix: **4/4 FAIL**.
 
-TDD requires a genuine causal RED before any production correction.
+Each sanitized `CredentialError` retained:
 
-## Current exact-head gate state
+```text
+RuntimeError("SYNTHETIC_EPIC03_ERROR_MATERIAL")
+```
 
-At current Bridge head `f7f4f8...`:
+in `__context__`.
+
+Classification: **feature-causal reduced RED for the exception-context property**. It is not labelled full exact-head suite execution.
+
+### Minimal context fix
+
+Commits:
+
+- `bac2ace30dfe190227636bb44d0ea38a1773129c` — broker/provider-call context detachment;
+- `7d6d2546ce0154f92167c531534f46be2b63ef96` — Vault/grant context detachment;
+- `38b8163c651903ffaa89b9a74a6324c293545aac` — restore the prior rejected-record cleanup reason semantics while keeping detached exception context.
+
+The implementation constructs the sanitized `CredentialError` while handling the backend exception, returns it as a value, exits the `except` block, and raises it only afterwards. This prevents Python from linking the backend exception into `__context__`.
+
+### GREEN
+
+The same four reduced checks after the fix: **4/4 PASS**.
+
+No real secret, Vault token, SecretID, root token or credential material was used.
+
+## Review of the context fix
+
+Diff `f7f4f8... → 38b8163...` changes only:
+
+- `src/hermes_mcp_bridge/v2/provider_credentials.py`;
+- `src/hermes_mcp_bridge/v2/vault_credentials.py`.
+
+Review found one unintended semantic deviation in the first helper version: rejected-record cleanup could preserve an arbitrary provider `CredentialError` reason. The pre-existing contract normalized all such cleanup failures to `E-CRED-UNAVAILABLE`. Commit `38b8163...` restores that behavior.
+
+No new gateway change was required for the exception-context extension.
+
+## Current verification state
+
+At Bridge head `38b8163c651903ffaa89b9a74a6324c293545aac`:
 
 | Gate | State |
 |---|---|
-| exception-context RED | NOT_RUN exact-head |
-| review-hardening GREEN | NOT_RUN exact-head |
-| all EPIC-03 targeted | NOT_RUN exact-head |
-| Phase 7 acceptance | NOT_RUN exact-head |
-| production activation | NOT_RUN exact-head |
-| Ruff | NOT_RUN exact-head |
-| compileall | NOT_RUN exact-head |
-| full pytest | NOT_RUN exact-head |
+| exception-context reduced RED/GREEN | PASS as reduced targeted evidence |
+| full-checkout review-hardening | NOT_RUN current head |
+| all EPIC-03 targeted | NOT_RUN current head |
+| Phase 7 acceptance | NOT_RUN current head |
+| production activation | NOT_RUN current head |
+| Ruff | NOT_RUN current head |
+| compileall | NOT_RUN current head |
+| full pytest | NOT_RUN current head |
 
-The prior repository-side PASS gates remain evidence for `da7d16b5...`, not for the current lane.
+No historical PASS is promoted to this final candidate without fresh evidence.
 
-## Hosted CI — current tests-only head
+## Hosted CI after temporary repository publication
 
-GitHub Actions created CI run `31975682497` for `f7f4f8f79ec5b7092fd49492539b6f206e710ffc`.
+The repository was temporarily made public and new commits were pushed afterwards.
 
-Observed:
+For current head `38b8163...`, GitHub Actions created CI run `31976218931`, but:
 
-- `test (3.11)`: job did not start, `steps=[]`;
-- `test (3.12)`: job did not start, `steps=[]`;
-- `secret scan (tree + history)`: job did not start, `steps=[]`;
-- image / isolated acceptance / Trivy / SBOM: skipped.
+- `test (3.11)` did not start a runner;
+- `test (3.12)` did not start a runner;
+- `secret scan (tree + history)` did not start a runner;
+- dependent image / isolated acceptance / Trivy / SBOM was skipped.
 
-GitHub annotation states that the jobs were not started because recent account payments failed or the spending limit needs to be increased.
+The jobs have `steps=[]` and `runner_id=0`. GitHub's annotation still states that recent account payments failed or the spending limit must be increased.
 
 Classification: **`BLOCKED_EXTERNAL_BILLING`** — neither code failure nor PASS.
 
-A repository search found no declared `self-hosted` Actions lane or alternate remote test harness. No ad-hoc runner lane is introduced as part of EPIC-03.
+Making the repository public did not clear the account-level Actions restriction.
 
-The ChatGPT-side Hermes MCP binding also became unavailable/disabled while attempting execution. That is an executor/control-plane blocker, not a repository PASS or failure.
+The ChatGPT-side Hermes MCP binding is also not currently exposed in this session, so it cannot be used as the full-checkout executor at this checkpoint.
 
 ## Required next repository sequence
 
-1. execute `tests/test_v2_epic03_vault_review_hardening.py` on exact current head `f7f4f8...` and capture the exception-context causal RED;
-2. only after that RED, implement the minimal exception-context sanitization fix;
-3. run review-hardening GREEN + all EPIC-03 targeted tests + Phase 7 + production activation;
-4. perform fresh exact-head Ruff + compileall + full pytest;
-5. perform formal code review against exact canonical base/final head;
-6. update this evidence with the final verified SHA;
+1. obtain an approved full-checkout executor;
+2. run `tests/test_v2_epic03_vault_review_hardening.py` on exact current/final head;
+3. run all EPIC-03 targeted tests + Phase 7 + production activation;
+4. run Ruff + compileall + full pytest on exact final head;
+5. perform formal final code review against canonical base/final head;
+6. update this evidence with final exact-SHA results;
 7. do not merge while mandatory hosted CI is externally blocked unless a separate governance decision explicitly defines an alternative release gate.
 
 ## Live state — unchanged
@@ -212,4 +190,4 @@ execution_authority = NONE
 campaign            = BLOCKED / HOLD
 ```
 
-No live Vault authentication, init, unseal, SecretID unwrap/use, Vault token/root-token use, secret migration or real credential resolution was performed while producing this evidence.
+No live Vault authentication, init, unseal, SecretID unwrap/use, Vault/root-token use, secret migration or real credential resolution was performed while producing this evidence.
