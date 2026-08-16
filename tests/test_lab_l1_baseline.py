@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
 import unittest
 from pathlib import Path
@@ -143,6 +144,12 @@ class RestoreGuardrailTests(unittest.TestCase):
         self.assertIn("vault operator raft snapshot restore -force", text)
         self.assertIn("isolated", text.lower())
         self.assertIn("independent", text.lower())
+
+
+class RepositoryModeTests(unittest.TestCase):
+    def test_operation_scripts_are_executable(self) -> None:
+        for script in (BASELINE_SCRIPT, RESTORE_SCRIPT):
+            self.assertTrue(os.access(script, os.X_OK), f"{script} must be executable")
 
 
 if __name__ == "__main__":
