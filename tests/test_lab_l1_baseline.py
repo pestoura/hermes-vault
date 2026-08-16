@@ -81,7 +81,7 @@ class AuditOverlayTests(unittest.TestCase):
         text = BASELINE_SCRIPT.read_text(encoding="utf-8")
         self.assertIn("audit-status", text)
         self.assertIn("audit-enable", text)
-        self.assertIn("vault audit list -format=json", text)
+        self.assertIn("vault audit list -detailed -format=json", text)
         self.assertIn("-path=lab-l1-file", text)
         self.assertIn("file_path=/vault/audit/audit.log", text)
         self.assertIn("mode=0600", text)
@@ -99,6 +99,17 @@ class SnapshotTests(unittest.TestCase):
         capabilities = re.findall(r'"(create|read|update|patch|delete|list|sudo|deny)"', text)
         self.assertEqual(capabilities, ["read"])
         self.assertNotIn("*", text)
+
+    def test_backup_approle_is_bounded_and_single_use(self) -> None:
+        text = BASELINE_SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("backup-role-configure", text)
+        self.assertIn("token_policies=hermes-lab-l1-backup", text)
+        self.assertIn("token_no_default_policy=true", text)
+        self.assertIn("token_ttl=10m", text)
+        self.assertIn("token_max_ttl=30m", text)
+        self.assertIn("secret_id_num_uses=1", text)
+        self.assertIn("secret_id_ttl=10m", text)
+        self.assertIn("-wrap-ttl=5m", text)
 
     def test_snapshot_save_is_atomic_local_and_never_restore(self) -> None:
         text = BASELINE_SCRIPT.read_text(encoding="utf-8")
