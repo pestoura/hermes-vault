@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
 import unittest
 from pathlib import Path
@@ -122,6 +123,9 @@ class PolicyTests(unittest.TestCase):
 
 
 class BootstrapScriptTests(unittest.TestCase):
+    def test_script_is_executable(self) -> None:
+        self.assertTrue(os.access(SCRIPT, os.X_OK), f"{SCRIPT} must be executable")
+
     def test_script_configures_only_auth_policies_roles_and_empty_kv_mount(self) -> None:
         text = SCRIPT.read_text(encoding="utf-8")
         for command in (
