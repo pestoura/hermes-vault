@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, epic-00/discovery-prerequisites, epic-01/baseline-adoption]
+    branches: [main, epic-00/discovery-prerequisites, epic-01/baseline-adoption, epic-02/identity-kv-contracts]
   workflow_dispatch:
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
           python-version: '3.12'
 
       - name: Compile Python
-        run: python -m compileall -q tools tests
+        run: python -m compileall -q tools tests broker bridge_v2
 
       - name: Validate immutable LAB_L1 source contract
         run: python tools/validate_lab_l1_source.py baseline/lab-l1-source.json
