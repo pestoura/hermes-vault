@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, epic-00/discovery-prerequisites]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  phase0-contract:
+  repository-contracts:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -26,7 +26,13 @@ jobs:
       - name: Compile Python
         run: python -m compileall -q tools tests
 
-      - name: Run Phase 0 contracts
+      - name: Validate immutable LAB_L1 source contract
+        run: python tools/validate_lab_l1_source.py baseline/lab-l1-source.json
+
+      - name: Check shell syntax
+        run: find operations -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
+
+      - name: Run repository contracts
         run: PYTHONPATH=. python -m unittest discover -s tests -v
 
       - name: Repository high-confidence secret marker guard

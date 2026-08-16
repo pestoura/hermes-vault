@@ -1,0 +1,23 @@
+{
+  "schema": "hermes-vault-lab-l1-source/v1",
+  "source": {
+    "repository": "pestoura/hermes-security-labs",
+    "commit": "c63fee752bfd28868da54eb9650943e2b504f659",
+    "path": "deployment/vault-lab-l1",
+    "files": {
+      "README.md": "6aeed8724876ddf6a2c7ae376a0b1bfb3ee9f5ee",
+      "compose.yaml": "ba775ef75253737cd7a17e0e85e5bb69401defa1",
+      "config/vault.hcl": "48127d7a72a356d33844cf74af1927f83864800c",
+      "bootstrap/bootstrap.sh": "071e5b9826ef33a0fbeafd9481bc714833ed8d0f",
+      "bootstrap/verify-capability.sh": "7b16f61601cdc1ae6a8dfc5403779920813a3911",
+      "policies/operator-observer.hcl": "5d6c51f558739738bf9db29f6613cadfc383ccdc",
+      "policies/signer.hcl": "bcc23eaec0381d5820c7573be9592bef0cc2913f"
+    }
+  },
+  "adoption": {
+    "mode": "immutable_reference",
+    "copy_upstream_files": false,
+    "runtime_status": "NOT_RUN",
+    "live_gates_asserted": false
+  }
+}

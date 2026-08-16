@@ -1,0 +1,8 @@
+services:
+  vault:
+    volumes:
+      - vault-lab-l1-audit:/vault/audit
+
+volumes:
+  vault-lab-l1-audit:
+    name: hermes-vault-lab-l1-audit
