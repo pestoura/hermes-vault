@@ -142,3 +142,19 @@ Utilizar esta checklist quando a implementação for iniciada.
 - [ ] `NO_SECRET_IN_REPO` accepted by repository gate/review.
 - [ ] `TARGET_ARCHITECTURE_APPROVED` recorded by its authority.
 - [ ] `RECOVERY_DESIGN_DEFINED` accepted by its authority.
+
+## EPIC-01 repository implementation status — 2026-08-16
+
+- [x] Immutable HSL LAB_L1 deployment provenance pinned by exact commit and blob identities.
+- [x] Audit named-volume overlay prepared without host bind mounts.
+- [x] Idempotent file audit device configuration contract prepared.
+- [x] Read-only Raft snapshot backup policy prepared.
+- [x] Bounded single-use backup AppRole bootstrap operations prepared.
+- [x] Atomic manual snapshot save/inspect/SHA-256 workflow prepared.
+- [x] Isolated restore-drill plan/preflight prepared; destructive restore remains HITL-only.
+- [ ] HSL baseline actually staged on Jarvas.
+- [ ] Vault initialized and unsealed live.
+- [ ] Audit device enabled and verified live.
+- [ ] Snapshot saved, inspected and independently copied live.
+- [ ] Initial root revoked live.
+- [ ] Isolated restore drill executed and accepted.
