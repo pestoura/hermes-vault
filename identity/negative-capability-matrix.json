@@ -1,0 +1,65 @@
+{
+  "schema": "hermes-vault-negative-capability-matrix/v1",
+  "identities": {
+    "hermes-runtime": {
+      "positive": [
+        {"path": "auth/token/lookup-self", "expected": ["read"]},
+        {"path": "sys/capabilities-self", "expected": ["update"]}
+      ],
+      "negative": [
+        {"path": "secret/data/jarvas/github/runtime", "expected": ["deny"]},
+        {"path": "secret/data/jarvas/microsoft/planner/runtime", "expected": ["deny"]},
+        {"path": "sys/policies/acl", "expected": ["deny"]},
+        {"path": "sys/auth", "expected": ["deny"]},
+        {"path": "sys/mounts", "expected": ["deny"]}
+      ]
+    },
+    "hermes-controller": {
+      "positive": [
+        {"path": "auth/token/lookup-self", "expected": ["read"]},
+        {"path": "sys/capabilities-self", "expected": ["update"]}
+      ],
+      "negative": [
+        {"path": "secret/data/jarvas/github/runtime", "expected": ["deny"]},
+        {"path": "secret/data/jarvas/microsoft/planner/runtime", "expected": ["deny"]},
+        {"path": "sys/policies/acl", "expected": ["deny"]},
+        {"path": "sys/auth", "expected": ["deny"]},
+        {"path": "sys/mounts", "expected": ["deny"]}
+      ]
+    },
+    "jarvas-operations": {
+      "positive": [
+        {"path": "auth/token/lookup-self", "expected": ["read"]},
+        {"path": "sys/capabilities-self", "expected": ["update"]}
+      ],
+      "negative": [
+        {"path": "secret/data/jarvas/github/runtime", "expected": ["deny"]},
+        {"path": "secret/data/jarvas/microsoft/planner/runtime", "expected": ["deny"]},
+        {"path": "sys/policies/acl", "expected": ["deny"]},
+        {"path": "sys/auth", "expected": ["deny"]},
+        {"path": "sys/mounts", "expected": ["deny"]}
+      ]
+    },
+    "github-tool": {
+      "positive": [
+        {"path": "auth/token/lookup-self", "expected": ["read"]},
+        {"path": "sys/capabilities-self", "expected": ["update"]},
+        {"path": "secret/data/jarvas/github/runtime", "expected": ["read"]},
+        {"path": "secret/metadata/jarvas/github/runtime", "expected": ["read"]}
+      ],
+      "negative": [
+        {"path": "secret/data/jarvas/grafana/runtime", "expected": ["deny"]},
+        {"path": "secret/data/jarvas/cloudflare/runtime", "expected": ["deny"]},
+        {"path": "secret/data/jarvas/microsoft/planner/runtime", "expected": ["deny"]},
+        {"path": "sys/policies/acl", "expected": ["deny"]},
+        {"path": "sys/auth", "expected": ["deny"]},
+        {"path": "sys/mounts", "expected": ["deny"]}
+      ]
+    }
+  },
+  "live_status": {
+    "NEGATIVE_TEST_PASS": false,
+    "LEAST_PRIVILEGE_PASS": false,
+    "NO_GLOBAL_WILDCARD": false
+  }
+}
