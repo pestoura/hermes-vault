@@ -176,3 +176,24 @@ Utilizar esta checklist quando a implementação for iniciada.
 - [ ] Pilot credential migrated/cut over live.
 - [ ] Legacy credential rotated/revoked and removed live.
 - [ ] Restart/reboot acceptance and secret scan completed live.
+
+## EPIC-03 repository implementation status — 2026-08-16
+
+- [x] Provider-neutral capability request/descriptor/private-capability model implemented.
+- [x] Mandatory correlation identifiers and bounded TTL validation implemented.
+- [x] Secret-free lifecycle registry implemented with duplicate request/handle protection.
+- [x] Request/status/revoke and execution cancellation lifecycle implemented.
+- [x] Private capability session implemented with cleanup on success and exception.
+- [x] Best-effort application-level bytearray zeroization implemented and documented with limitations.
+- [x] Recursive result redaction and synthetic NO_SECRET_TO_MODEL contracts implemented.
+- [x] Direct-tool and agent execution paths implemented against provider-neutral ports.
+- [x] Multi-tool batch contract implemented with independent capability objects and cleanup on partial failure.
+- [x] Sanitized broker evidence schema `hermes-vault-broker-evidence/v1` implemented.
+- [x] Credential Broker / Bridge V2 live integration runbook prepared.
+- [ ] Real Vault-backed `CapabilityProvider` integrated on Jarvas.
+- [ ] Hermes MCP Bridge V2 wired to the Broker live.
+- [ ] `BROKER_ACCEPTANCE_PASS` accepted from live evidence.
+- [ ] `NO_SECRET_TO_MODEL` accepted against live provider-shaped flows.
+- [ ] `LEASE_CLEANUP_PASS` and `CANCEL_CLEANUP_PASS` accepted live.
+- [ ] `BATCH_EXECUTION_PASS` and `SEPARATE_CAPABILITIES_PASS` accepted live.
+- [ ] `NO_CROSS_TOOL_SECRET_ACCESS` and `SANITIZED_RESULT_PASS` accepted live.
