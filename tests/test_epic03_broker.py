@@ -4,6 +4,7 @@ import json
 import unittest
 from datetime import datetime, timezone
 
+from broker.evidence import build_broker_evidence
 from broker.model import CapabilityRequest, CapabilityDescriptor, PrivateCapability
 from broker.redaction import sanitize
 from broker.registry import CapabilityRegistry
@@ -119,6 +120,37 @@ class ModelAndRedactionTests(unittest.TestCase):
         for forbidden in ("abc123", "abc.def.ghi", SECRET.decode()):
             self.assertNotIn(forbidden, encoded)
         self.assertIn("[REDACTED]", encoded)
+
+    def test_evidence_schema_is_safe_and_contains_no_secret_fields_or_markers(self) -> None:
+        req = request()
+        descriptor = CapabilityDescriptor(
+            handle="cap-safe",
+            request_id=req.request_id,
+            execution_id=req.execution_id,
+            tool_identity=req.tool_identity,
+            capability_type=req.capability_type,
+            lease_id="lease-safe",
+            expires_at="2026-08-16T18:30:00Z",
+            cleanup_required=True,
+            status="REVOKED",
+            cleanup_status="PASS",
+        )
+        evidence = build_broker_evidence(req, descriptor, final_status="PASS")
+        self.assertEqual(evidence["schema"], "hermes-vault-broker-evidence/v1")
+        encoded = json.dumps(evidence)
+        for forbidden in (
+            SECRET.decode(),
+            '"token"',
+            '"secret"',
+            '"password"',
+            '"private_key"',
+            '"authorization"',
+            '"wrapped_payload"',
+            '"recovery"',
+            '"unseal"',
+        ):
+            self.assertNotIn(forbidden, encoded.lower() if forbidden.startswith('"') else encoded)
+        self.assertEqual(evidence["cleanup_status"], "PASS")
 
 
 class RegistryAndBrokerTests(unittest.TestCase):
