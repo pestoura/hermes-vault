@@ -18,8 +18,9 @@ Bind the EPIC-03 Vault contract to the exact companion implementation in `pestou
 - branch: `epic-03/vault-credential-provider`
 - PR: `#110` (draft / open / unmerged)
 - exact base SHA: `3717bd5469b061a44294b27e1a7510d477d3752b`
-- **last accepted GREEN head:** `da7d16b5e162b2f110062b40a5b510c1af23b4f8`
-- **current tests-only review head:** `72f350590b0f24e1f235c95a462b37efea222306`
+- last previously accepted GREEN head: `da7d16b5e162b2f110062b40a5b510c1af23b4f8`
+- review-tests / causal RED head: `72f350590b0f24e1f235c95a462b37efea222306`
+- current candidate head: `152da7959781b47725bac20e91ff287e81a0a985`
 
 The old `hermes-vault` PR #17 / `epic-03/credential-broker-core` is **SUPERSEDED** architecture and must not be merged into this lane.
 
@@ -77,75 +78,108 @@ Batch evidence:
 - two provider calls / two credential resolutions;
 - synthetic sentinel absent from results and audit.
 
-## Security review hardening — current tests-only head
+These PASS labels belong only to `da7d16b5...` until the current candidate receives fresh exact-head verification.
 
-Static review of PR #110 identified additional lifecycle/error-redaction cases not covered by the accepted GREEN head:
+## Security review hardening — causal RED
+
+Static review identified five lifecycle/error-redaction areas:
 
 1. a provider-issued record rejected as broad/cross-domain must be cleaned up before refusal;
 2. a provider-issued record with `ready=False` must be cleaned up before refusal;
 3. backend exceptions must not remain attached as secret-bearing exception causes;
 4. per-grant cleanup exceptions must be normalized and sanitized;
-5. cleanup failure must still produce exactly one terminal sanitized audit outcome rather than escape the gateway `finally`.
+5. cleanup failure must still produce a terminal sanitized audit outcome rather than escape the gateway `finally`.
 
-Tests for these cases are committed at exact head:
+Tests were committed at exact head:
 
 `72f350590b0f24e1f235c95a462b37efea222306`
 
-This head changes tests only. The new review-hardening tests are currently:
+Exact checkout execution:
 
-`RED = NOT_RUN`
+```text
+PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests/test_v2_epic03_vault_review_hardening.py
+```
 
-Reason: Hermes upstream admission is `gateway_state=draining` / `accepting_new_work=false`. Production code has **not** been changed for these new tests. The previous GREEN evidence must not be attributed to `72f3505...`.
+Result: **7 failed / 0 passed**. All seven failures were feature-causal:
 
-## EPIC-03 gate status
+- broad rejected record cleanup count `0`, expected `1`;
+- `ready=False` record cleanup count `0`, expected `1`;
+- broker preserved synthetic backend `RuntimeError` as `__cause__`;
+- Vault request preserved synthetic backend `RuntimeError` as `__cause__`;
+- Vault revoke preserved synthetic backend `RuntimeError` as `__cause__`;
+- per-grant `revoke()` leaked the synthetic backend `RuntimeError`;
+- gateway cleanup failure leaked the synthetic backend `RuntimeError` before the required terminal outcome.
 
-At the last accepted GREEN head `da7d16b5...`:
+The only warning was an unrelated pytest configuration warning for `asyncio_mode`.
+
+Classification: **VALID TDD RED**.
+
+## Minimal candidate fix
+
+The current Bridge candidate is:
+
+`152da7959781b47725bac20e91ff287e81a0a985`
+
+It is exactly three commits ahead of the RED head and changes only:
+
+- `src/hermes_mcp_bridge/v2/provider_credentials.py`;
+- `src/hermes_mcp_bridge/v2/vault_credentials.py`;
+- `src/hermes_mcp_bridge/v2/provider_gateway.py`.
+
+Candidate behavior:
+
+- cleans provider-issued records rejected after issuance or marked `ready=False`;
+- suppresses backend exception chaining at broker/provider boundaries;
+- wraps request-scoped grant `apply`/`revoke` with sanitized `CredentialError` conversion;
+- fails closed on invalid grants with best-effort cleanup;
+- contains gateway cleanup failure and preserves terminal audit flow;
+- read cleanup failure => `ERROR / E-CRED-UNAVAILABLE / payload={}`;
+- write cleanup failure => `UNKNOWN / E-CRED-UNAVAILABLE / payload={}`.
+
+A reconstructed semantic harness covering the seven review cases is GREEN. This is **auxiliary evidence only** and is not treated as repository exact-head PASS.
+
+## Current exact-head gate state
+
+At candidate `152da795...`:
 
 | Gate | State |
 |---|---|
-| `BROKER_ACCEPTANCE_PASS` | PASS |
-| `NO_SECRET_TO_MODEL` | PASS |
-| `LEASE_CLEANUP_PASS` | PASS — original success/error lifecycle; review tests will tighten rejected-grant coverage |
-| `CANCEL_CLEANUP_PASS` | PASS |
-| `BATCH_EXECUTION_PASS` | PASS |
-| `SEPARATE_CAPABILITIES_PASS` | PASS |
-| `NO_CROSS_TOOL_SECRET_ACCESS` | PASS |
-| `SANITIZED_RESULT_PASS` | PASS |
-| `NO_SECRET_SERIALIZATION_PASS` | PASS |
-| `FAIL_CLOSED_VAULT_UNAVAILABLE_PASS` | PASS |
+| review-hardening GREEN | NOT_RUN exact-head |
+| all EPIC-03 targeted | NOT_RUN exact-head |
+| Phase 7 acceptance | NOT_RUN exact-head |
+| production activation | NOT_RUN exact-head |
+| Ruff | NOT_RUN exact-head |
+| compileall | NOT_RUN exact-head |
+| full pytest | NOT_RUN exact-head |
 
-Merge remains blocked until the review-hardening TDD cycle is executed and a new exact-head verification is produced.
+The prior repository-side PASS gates remain evidence for `da7d16b5...`, not for the candidate.
 
-## Hosted CI
+## Hosted CI — current candidate
 
-GitHub Actions on the current tests-only head `72f350590b0f24e1f235c95a462b37efea222306` created CI run `31970284770`.
+GitHub Actions created CI run `31975031498` for `152da7959781b47725bac20e91ff287e81a0a985`.
 
 Observed:
 
-- `test (3.11)`: failure before execution, `steps=[]`, `runner_id=0`;
-- `test (3.12)`: failure before execution, `steps=[]`, `runner_id=0`;
-- `secret scan (tree + history)`: failure before execution, `steps=[]`, `runner_id=0`;
+- `test (3.11)`: job did not start, `steps=[]`, `runner_id=0`;
+- `test (3.12)`: job did not start, `steps=[]`, `runner_id=0`;
+- `secret scan (tree + history)`: job did not start, `steps=[]`, `runner_id=0`;
 - image / isolated acceptance / Trivy / SBOM: skipped.
 
-GitHub annotation states that the job was not started because recent account payments failed or the spending limit needs to be increased.
+GitHub annotation states that the jobs were not started because recent account payments failed or the spending limit needs to be increased.
 
-Classification: **`BLOCKED_EXTERNAL_BILLING`**.
+Classification: **`BLOCKED_EXTERNAL_BILLING`** — neither code failure nor PASS.
 
-This is neither code failure nor CI PASS.
+A repository search found no declared `self-hosted` Actions lane. No ad-hoc runner lane is introduced as part of EPIC-03.
+
+The ChatGPT-side Hermes MCP binding also became unavailable/disabled while attempting current-head execution. That is an executor/control-plane blocker, not a repository PASS or failure.
 
 ## Required next repository sequence
 
-1. execute `tests/test_v2_epic03_vault_review_hardening.py` on exact `72f3505...` and capture a feature-causal RED;
-2. only after RED, implement the minimal cleanup/error-redaction fix;
-3. run review-hardening GREEN + all EPIC-03 targeted tests + Phase 7 + production activation;
-4. commit and run fresh detached exact-head verification:
-   - EPIC-03 targeted;
-   - Phase 7;
-   - production activation;
-   - Ruff;
-   - compileall;
-   - full pytest suite;
-5. perform formal code review against exact base/head;
+1. execute review-hardening GREEN on exact current candidate head;
+2. run all EPIC-03 targeted tests + Phase 7 + production activation;
+3. perform fresh exact-head Ruff + compileall + full pytest;
+4. perform formal code review against exact canonical base/final head;
+5. update this evidence with the final verified SHA;
 6. do not merge while mandatory hosted CI is externally blocked unless a separate governance decision explicitly defines an alternative release gate.
 
 ## Live state — unchanged
