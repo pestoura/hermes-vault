@@ -141,7 +141,7 @@ class RegistryAndBrokerTests(unittest.TestCase):
             self.broker.request(request())
 
         other = request(request_id="req-002", tool_call_id="call-002")
-        self.provider.counter -= 1
+        self.provider.counter = 0
         with self.assertRaises(ValueError):
             self.broker.request(other)
 
