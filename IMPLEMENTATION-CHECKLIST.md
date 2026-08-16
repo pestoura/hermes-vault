@@ -158,3 +158,21 @@ Utilizar esta checklist quando a implementação for iniciada.
 - [ ] Snapshot saved, inspected and independently copied live.
 - [ ] Initial root revoked live.
 - [ ] Isolated restore drill executed and accepted.
+
+## EPIC-02 repository implementation status — 2026-08-16
+
+- [x] AppRole identity contract prepared for `hermes-runtime`, `hermes-controller`, `jarvas-operations` and `github-tool`.
+- [x] Role TTL/SecretID/wrapping bounds validated in repository tests.
+- [x] Exact minimal policies prepared; runtime/controller/operations have no direct KV access.
+- [x] `github-tool` policy restricted to exact GitHub runtime data/metadata paths.
+- [x] Policy linter prepared with wildcard, sudo, admin-path and cross-tool protections.
+- [x] KV v2 `secret/` mount bootstrap/status contract prepared without secret writes.
+- [x] Positive/negative capability matrix prepared for all four identities.
+- [x] Reference-only KV pilot handoff and migration/rollback runbook prepared.
+- [ ] AppRoles/policies configured live on Jarvas Vault.
+- [ ] `AUTH_PASS` accepted from live evidence.
+- [ ] `LEAST_PRIVILEGE_PASS` and `NEGATIVE_TEST_PASS` accepted from live role sessions.
+- [ ] Real low-risk pilot selected from live discovery with owner/rollback evidence.
+- [ ] Pilot credential migrated/cut over live.
+- [ ] Legacy credential rotated/revoked and removed live.
+- [ ] Restart/reboot acceptance and secret scan completed live.
