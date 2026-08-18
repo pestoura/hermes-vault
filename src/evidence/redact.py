@@ -21,8 +21,18 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
      "[REDACTED-PRIVKEY]"),
     (re.compile(r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", re.S),
      "[REDACTED-CERT]"),
+    # Complete assignments FIRST: redact the label AND its non-whitespace value
+    # for sensitive keys so the secret VALUE (not just the key name) is removed.
+    # This must run before the bare-label rule below, otherwise the label rule
+    # strips the key name and leaves the value in clear text.
+    (re.compile(
+        r"\b(root_token|recovery_key(?:_\d+)?|unseal_key(?:_\d+)?|SecretID|VAULT_TOKEN|VAULT_[A-Z0-9_]+)\b"
+        r"\s*[:=]\s*\S+",
+        re.I,
+    ), "[REDACTED-SEC]"),
     # Bare secret labels (also catch the JSON `"label":` form where a quote sits
     # between the label and the value, defeating the assignment-style patterns).
+    # Runs only after complete assignments above have consumed any `label=value`.
     (re.compile(r"\b(root_token|recovery_key|recovery_key_\d+|unseal_key|unseal_key_\d+)\b", re.I),
      "[REDACTED-LBL]"),
     # Vault tokens: s.* , hvs.* , root.* (token prefixes per Vault docs).

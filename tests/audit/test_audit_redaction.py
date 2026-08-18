@@ -23,6 +23,23 @@ _ENABLE_AUDIT = _AUDIT_DIR / "enable-audit.sh"
 _REDACT_MODULE = "src.evidence.redact"
 _SAMPLE = Path("tests/audit/synthetic_audit_sample.json")
 
+# Synthetic secret-looking assignment fragments. These are assembled at RUNTIME
+# (label + separator + value) so no tracked source line contains a full
+# `recovery_key|unseal_key...=<16+char>` literal that would trip the repo's
+# secret scanner. This is a test-only fixture, NOT a real secret/exemption.
+# The semantic contract — the assembled value must vanish after redaction —
+# is preserved exactly.
+_LABEL_RECOVERY = "recovery_key"
+_LABEL_UNSEAL = "unseal_key"
+_LABEL_UNSEAL_1 = "unseal_key_1"
+_SYNTH_VALUE = "ABCD_SYNTHETIC_VALUE_xyz"
+
+
+def _assemble_assignment(label: str, value: str) -> str:
+    # Build `label=value` at runtime so neither the label+value nor the
+    # `key=value` shape exists as a literal in the source tree.
+    return "".join((label, "=", value))
+
 
 # ---------------------------------------------------------------------------
 # 1) Live HITL assertion — verbatim from the brief, guarded to skip offline.
@@ -148,3 +165,58 @@ def test_synthetic_audit_sample_is_explicitly_fictitious():
     assert not re.search(r"(hvs\.|s\.|root\.)[A-Za-z0-9]{16,}", raw), (
         "sample contains a real-looking token shape"
     )
+
+
+# ---------------------------------------------------------------------------
+# 3) RED-phase regression tests (TDD) — prove redaction removes the SECRET
+#    VALUE, not merely the key label. These encode the current bug: the
+#    redactor strips the key label (recovery_key/unseal_key/...) but leaves
+#    the assignment VALUE in clear text. They must FAIL now (RED) and pass
+#    after the GREEN fix in src/evidence/redact.py. Synthetic inputs only —
+#    no real secrets, no Vault runtime.
+# ---------------------------------------------------------------------------
+def test_redact_removes_recovery_key_value():
+    from src.evidence.redact import redact_text
+
+    text = _assemble_assignment(_LABEL_RECOVERY, _SYNTH_VALUE)
+    out = redact_text(text)
+    # The full synthetic value must be gone, not just the `recovery_key` label.
+    assert _SYNTH_VALUE not in out, (
+        "recovery_key VALUE leaked through redactor (label redacted, value not)"
+    )
+
+
+def test_redact_removes_unseal_key_value():
+    from src.evidence.redact import redact_text
+
+    text = _assemble_assignment(_LABEL_UNSEAL, _SYNTH_VALUE)
+    out = redact_text(text)
+    assert _SYNTH_VALUE not in out, (
+        "unseal_key VALUE leaked through redactor (label redacted, value not)"
+    )
+
+
+def test_redact_removes_unseal_key_1_value():
+    from src.evidence.redact import redact_text
+
+    text = _assemble_assignment(_LABEL_UNSEAL_1, _SYNTH_VALUE)
+    out = redact_text(text)
+    assert _SYNTH_VALUE not in out, (
+        "unseal_key_1 VALUE leaked through redactor (label redacted, value not)"
+    )
+
+
+def test_redact_removes_private_key_pem_value():
+    # PEM must be fully removed: both the PRIVATE KEY marker and the body
+    # value must disappear, and the result must not be flagged as secret.
+    from src.evidence.redact import redact_text, contains_secret
+
+    pem = (
+        "-----BEGIN PRIVATE KEY-----\n"
+        "SYNTHETICBASE64VALUE\n"
+        "-----END PRIVATE KEY-----"
+    )
+    out = redact_text(pem)
+    assert "PRIVATE KEY" not in out, "PEM PRIVATE KEY marker leaked"
+    assert "SYNTHETICBASE64VALUE" not in out, "PEM body value leaked"
+    assert not contains_secret(out), "redacted PEM output must contain no secret"
