@@ -1,0 +1,16 @@
+# virtual environments
+.venv/
+venv/
+
+# python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# secrets & vault runtime artifacts (NEVER commit)
+*.key
+secrets/
+.vault-token
+certs/
+vault-data/
+backups/
