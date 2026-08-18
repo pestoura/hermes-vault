@@ -16,3 +16,4 @@ vault-data/
 backups/
 
 # scratch task reports (gitignored, never commit)
+.scratch-task-*.md
