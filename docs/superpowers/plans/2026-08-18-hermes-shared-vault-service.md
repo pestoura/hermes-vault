@@ -7,6 +7,7 @@
 **Architecture:** Docker single-node Vault Community/OSS pinned by digest; Integrated Storage (Raft); mandatory TLS; manual Shamir 3/2 (no auto-unseal); one mandatory audit device with redaction; per-consumer dedicated mounts + exact-path policies + dedicated AppRoles; a provider-neutral capability contract (no secret material) defined in this repo; fail-closed lifecycle; secret-zero handled out-of-band. Existing HSL `deployment/vault-lab-l1/` patterns are generalized INTO this service; HSL becomes a consumer only. The concrete `VaultCredentialProvider` (#18) is explicitly deferred to PR-chain reconciliation and is NOT built here.
 
 **Tech Stack:** HashiCorp Vault 1.21.4 (Community/OSS, `@sha256` pinned to the HSL-validated digest), Docker / Compose, Python 3.11+ (PEP 668 → venv or uv), `pytest`, `hvac` (Vault client, implementation/test only), `pydantic` (contract schema), HCL policy files, `bash` gate scripts. No Enterprise/HCP features, no namespaces.
+**Spec:** docs/specs/2026-08-18-hermes-shared-vault-service-design.md
 
 **Source of truth:** `docs/specs/2026-08-18-hermes-shared-vault-service-design.md` (spec), ADRs `docs/13`, operating model `docs/15`. This plan implements the spec; it does not reopen superseded assumptions. PR #14–#16 are harvested for reusable work; #17 is a superseded governance action; #18 is deferred.
 
@@ -112,7 +113,7 @@ INV-11 SCOPE_HERMES_VAULT_ONLY — no file in this plan is written outside pesto
 - Create: `tests/__init__.py`, `tests/scaffold/__init__.py`, `tests/policy_lint/__init__.py`, `tests/contract/__init__.py`, `tests/isolation/__init__.py`, `tests/audit/__init__.py`, `tests/recovery/__init__.py`, `tests/lifecycle/__init__.py`, `tests/evidence/__init__.py`, `tests/secret_zero/__init__.py`, `tests/ci/__init__.py`, `tests/baseline/__init__.py`, `tests/plans/__init__.py`
 - Create: `.gitignore` (venv, `__pycache__`, `*.key`, `secrets/`, `.vault-token`, `certs/`, `vault-data/`, `backups/`)
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/scaffold/test_imports.py
 def test_harness_importable():
@@ -120,11 +121,11 @@ def test_harness_importable():
     assert pytest.__version__ >= "7.0"
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `python -m pytest tests/scaffold/test_imports.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'pytest'` (deps not yet installed in env).
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 Create `pyproject.toml`:
 ```toml
 [build-system]
@@ -145,11 +146,11 @@ testpaths = ["tests"]
 markers = ["hitl: operator-only step, skip in CI without explicit flag"]
 ```
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `uv sync --extra test && python -m pytest tests/scaffold/test_imports.py -v` (or `python -m venv .venv && . .venv/bin/activate && pip install -e '.[test]' && pytest ...`)
 Expected: PASS — 1 passed.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add pyproject.toml .gitignore tests/conftest.py tests/__init__.py tests/*/__init__.py tests/scaffold/test_imports.py
 git commit -m "test(ci): scaffold hermes-vault test harness and dependency isolation"
@@ -163,7 +164,7 @@ git commit -m "test(ci): scaffold hermes-vault test harness and dependency isola
 - Create: `src/policy_lint/__init__.py`, `src/policy_lint/linter.py`
 - Test: `tests/policy_lint/test_policy_lint.py`
 
-**Step 1: Write failing tests**
+- [ ] **Step 1: Write failing tests**
 ```python
 # tests/policy_lint/test_policy_lint.py
 from src.policy_lint.linter import lint_policy_text
@@ -183,11 +184,11 @@ def test_exact_path_accepted():
     assert lint_policy_text(good, identity="hsl-signer") == []
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/policy_lint/test_policy_lint.py -v`
 Expected: FAIL — `ModuleNotFoundError: src.policy_lint.linter`.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 ```python
 # src/policy_lint/linter.py
 import re
@@ -207,11 +208,11 @@ def lint_policy_text(text: str, identity: str) -> list[str]:
     return issues
 ```
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `pytest tests/policy_lint/test_policy_lint.py -v`
 Expected: PASS — 3 passed.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add src/policy_lint/ tests/policy_lint/
 git commit -m "test(policy): static lint bans wildcard/sudo for normal identities"
@@ -225,7 +226,7 @@ git commit -m "test(policy): static lint bans wildcard/sudo for normal identitie
 - Create: `src/capability_contract/__init__.py`, `src/capability_contract/schema.py`
 - Test: `tests/contract/test_capability_contract.py`
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/contract/test_capability_contract.py
 from src.capability_contract.schema import CapabilityRequest, CapabilityType
@@ -250,11 +251,11 @@ def test_rejects_secret_material():
                           _secret_value="VAULT-TOKEN-XXXX")  # field must not exist
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/contract/test_capability_contract.py -v`
 Expected: FAIL — module not found.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 ```python
 # src/capability_contract/schema.py
 from enum import Enum
@@ -283,11 +284,11 @@ class CapabilityRequest(BaseModel):
     model_config = {"extra": "forbid"}  # reject unexpected fields incl. any secret payload
 ```
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `pytest tests/contract/test_capability_contract.py -v`
 Expected: PASS — 2 passed.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add src/capability_contract/ tests/contract/
 git commit -m "feat(contract): provider-neutral capability schema without secret material"
@@ -301,7 +302,7 @@ git commit -m "feat(contract): provider-neutral capability schema without secret
 - Create: `scripts/ci/run-gates.sh`
 - Create: `.github/workflows/fast-gates.yml` (trusted-only, no Vault, no secrets, `permissions: read-all`)
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/ci/test_gate_script.py
 import subprocess, pathlib
@@ -312,11 +313,11 @@ def test_run_gates_script_exists_and_is_executable():
     assert out.returncode == 0
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/ci/test_gate_script.py -v`
 Expected: FAIL — script missing.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 ```bash
 #!/usr/bin/env bash
 # scripts/ci/run-gates.sh — local PRIMARY gate runner (GitHub billing aborts Actions ~2s).
@@ -333,11 +334,11 @@ echo "[gate] integration (requires local HITL Vault)"; pytest tests/isolation te
 ```
 `.github/workflows/fast-gates.yml` mirrors only the first four gates, no Vault, no secrets.
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `pytest tests/ci/test_gate_script.py -v`
 Expected: PASS — 1 passed. (Real `bash scripts/ci/run-gates.sh` runs the four fast gates locally.)
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add scripts/ci/run-gates.sh .github/workflows/fast-gates.yml tests/ci/
 git commit -m "ci(gates): local primary gate runner; minimal trusted GitHub workflow (billing-aware)"
@@ -357,7 +358,7 @@ git commit -m "ci(gates): local primary gate runner; minimal trusted GitHub work
 - Create: `deployments/vault/config/vault.hcl`
 - Create: `deployments/vault/.gitignore` (`vault-data/`, `certs/`, `*.key`, `*.pem`)
 
-**Step 1: Write failing test (config assertions, no runtime yet)**
+- [ ] **Step 1: Write failing test (config assertions, no runtime yet)**
 ```python
 # tests/baseline/test_compose_config.py
 from pathlib import Path
@@ -384,11 +385,11 @@ def test_hardening_flags():
     assert "no-new-privileges" in str(c.get("security_opt", []))
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/baseline/test_compose_config.py -v`
 Expected: FAIL — files missing.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 ```dockerfile
 # deployments/vault/Dockerfile
 # Pinned to the HSL-validated digest (supply-chain verified against the official manifest).
@@ -440,11 +441,11 @@ storage "raft" {
 ```
 Companion `deployments/vault/.gitignore`: `vault-data/ certs/ *.key *.pem`.
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `pytest tests/baseline/test_compose_config.py -v`
 Expected: PASS — 3 passed.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add deployments/vault/Dockerfile deployments/vault/docker-compose.yml deployments/vault/config/vault.hcl deployments/vault/.gitignore tests/baseline/
 git commit -m "feat(deploy): Docker single-node Vault 1.21.4 (HSL digest) pinned, Raft, TLS, Shamir (no auto-unseal)"
@@ -457,7 +458,7 @@ git commit -m "feat(deploy): Docker single-node Vault 1.21.4 (HSL digest) pinned
 **Files:**
 - Test: `tests/baseline/test_baseline_acceptance.py`
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/baseline/test_baseline_acceptance.py
 import os, pytest
@@ -482,17 +483,17 @@ def test_shamir_threshold_two_of_three():
     assert cfg["threshold"] == 2 and cfg["secret_shares"] == 3
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/baseline/test_baseline_acceptance.py -v`
 Expected: FAIL (skipped locally without `VAULT_ADDR`/container; on a started container before init: health returns sealed; threshold asserts fail because not initialized).
 
-**Step 3: Minimal implementation** — `deployments/vault/docker-compose.yml` already provides the running service; operator runs `docker compose up -d`, then performs B4 HITL init/unseal. No application code beyond the compose/config from B1.
+- [ ] **Step 3: Minimal implementation** — `deployments/vault/docker-compose.yml` already provides the running service; operator runs `docker compose up -d`, then performs B4 HITL init/unseal. No application code beyond the compose/config from B1.
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run (after HITL B4): `VAULT_ADDR=https://127.0.0.1:8200 VAULT_CACERT=deployments/vault/certs/ca.pem pytest tests/baseline/test_baseline_acceptance.py -v`
 Expected: PASS — 3 passed.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add tests/baseline/test_baseline_acceptance.py
 git commit -m "test(baseline): TLS-only, Raft mode, Shamir 3/2 acceptance (HITL init/unseal)"
@@ -506,7 +507,7 @@ git commit -m "test(baseline): TLS-only, Raft mode, Shamir 3/2 acceptance (HITL 
 - Create: `deployments/vault/scripts/provision-tls.sh` (generates `certs/vault-server.pem`, `certs/vault-server.key`, `certs/ca.pem` into the git-ignored `certs/`).
 - Modify: `SECURITY.md` (note TLS private material lives out-of-repo path, operator custody).
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/baseline/test_tls_material.py
 from pathlib import Path
@@ -517,18 +518,18 @@ def test_provision_script_writes_gitignored_certs():
     assert "certs/" in (Path("deployments/vault/.gitignore").read_text())
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/baseline/test_tls_material.py -v`
 Expected: FAIL — `certs/` present in B1 `.gitignore` but the script + SECURITY note absent.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 `provision-tls.sh` uses `openssl req -x509` to emit a self-signed CA + server cert into `deployments/vault/certs/` (git-ignored). `SECURITY.md` gains a bullet: "Vault TLS private key is operator-custodied under `deployments/vault/certs/` (git-ignored); never committed; recovery of TLS material is an operator responsibility (spec §25.4)."
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `pytest tests/baseline/test_tls_material.py -v`
 Expected: PASS — 2 passed.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add deployments/vault/scripts/provision-tls.sh deployments/vault/.gitignore SECURITY.md tests/baseline/test_tls_material.py
 git commit -m "feat(tls): operator TLS provisioning; private material git-ignored (HITL)"
@@ -542,7 +543,7 @@ git commit -m "feat(tls): operator TLS provisioning; private material git-ignore
 - Create: `docs/runbooks/vault-bootstrap.md` (HITL steps: `vault operator init -key-shares=3 -key-threshold=2`, record Shamir shares + root to out-of-band custody; `vault operator unseal` x2 by quorum; revoke initial root after bootstrap; enable audit).
 - Create: `deployments/vault/scripts/bootstrap-checklist.sh` (read-only checklist printer; does NOT execute secret operations).
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/baseline/test_no_automated_secret_ops.py
 from pathlib import Path
@@ -556,18 +557,18 @@ def test_no_secret_in_runbook():
     assert not re.search(r"(root_token|recovery_key|s\.\w{20,})", txt), "real secret leaked"
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/baseline/test_no_automated_secret_ops.py -v`
 Expected: FAIL — file missing.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 `docs/runbooks/vault-bootstrap.md` documents the exact `vault operator init/unseal` commands with explicit HITL gates and the post-bootstrap revoke-root + enable-audit steps; all Shamir shares/root recorded to out-of-band custody (never repo). `bootstrap-checklist.sh` only prints the checklist.
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `pytest tests/baseline/test_no_automated_secret_ops.py -v`
 Expected: PASS — 2 passed.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add docs/runbooks/vault-bootstrap.md deployments/vault/scripts/bootstrap-checklist.sh tests/baseline/test_no_automated_secret_ops.py
 git commit -m "docs(bootstrap): HITL init/unseal/root runbook; no automated secret ops"
@@ -585,7 +586,7 @@ git commit -m "docs(bootstrap): HITL init/unseal/root runbook; no automated secr
 - Test: `tests/audit/test_audit_redaction.py`
 - Create: `deployments/vault/scripts/enable-audit.sh` (idempotent `vault audit enable file file_path=...`; HITL uses operator token).
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/audit/test_audit_redaction.py
 import os, pytest, hvac, json
@@ -602,18 +603,18 @@ def test_audit_redacts_secret_material():
     assert "SecretID" not in txt
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/audit/test_audit_redaction.py -v`
 Expected: FAIL — audit not enabled / sample missing.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 `enable-audit.sh` runs `vault audit enable file file_path=/vault/logs/audit.json` (operator token; HITL). Redaction is enforced by Vault's audit system + the consumer redaction layer (G2).
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run (after HITL enable): `pytest tests/audit/test_audit_redaction.py -v`
 Expected: PASS — 2 passed. Acceptance gate `AUDIT_PASS` recorded.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add deployments/vault/scripts/enable-audit.sh tests/audit/
 git commit -m "feat(audit): mandatory audit device + redaction assertions (ADR-011)"
@@ -631,7 +632,7 @@ git commit -m "feat(audit): mandatory audit device + redaction assertions (ADR-0
 - Create: `deployments/vault/scripts/snapshot.sh` (writes encrypted copy + checksum/metadata to git-ignored `backups/`).
 - Create: `tests/recovery/test_restore_drill.py` (drives an ISOLATED container, restores, asserts acceptance criteria from spec §10).
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/recovery/test_restore_drill.py
 import os, pytest
@@ -645,18 +646,18 @@ def test_restore_drill_isolated_acceptance():
     assert out == 0
 ```
 
-**Step 2: Run test to verify failure**
+- [ ] **Step 2: Run test to verify failure**
 Run: `pytest tests/recovery/test_restore_drill.py -v`
 Expected: FAIL — script/container missing.
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 `restore-drill.sh` spins a throwaway container from the pinned digest, restores `backups/*.snapshot`, mounts only synthetic acceptance data, runs the acceptance assertions, and tears down. `snapshot.sh` performs `vault operator raft snapshot save` + checksum + git-ignored encrypted copy.
 
-**Step 4: Run test to verify pass**
+- [ ] **Step 4: Run test to verify pass**
 Run: `bash deployments/vault/scripts/restore-drill.sh --smoke && pytest tests/recovery/test_restore_drill.py -v`
 Expected: PASS — drill acceptance green; `RESTORE_DRILL_PASS` recorded.
 
-**Step 5: Commit**
+- [ ] **Step 5: Commit**
 ```bash
 git add deployments/vault/scripts/snapshot.sh deployments/vault/scripts/restore-drill.sh tests/recovery/
 git commit -m "feat(recovery): snapshots + isolated restore-drill gate (ADR-012)"
@@ -674,7 +675,7 @@ git commit -m "feat(recovery): snapshots + isolated restore-drill gate (ADR-012)
 - Create: `deployments/vault/scripts/enable-hsl-transit.sh` (HITL operator: `vault secrets enable -path=hsl-transit transit`; `vault write hsl-transit/keys/hsl-signing ...`).
 - Test: `tests/isolation/test_hsl_mount.py`
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/isolation/test_hsl_mount.py
 import os, pytest, hvac
@@ -687,11 +688,12 @@ def test_hsl_signing_key_present():
     assert "hsl-signing" in c.secrets.transit.read_key(name="hsl-signing", mount_point="hsl-transit")["data"]
 ```
 
-**Step 2: Run test to verify failure** → FAIL (mount absent).
+- [ ] **Step 2: Run test to verify failure** → FAIL (mount absent).
 
-**Step 3: Implement** via `enable-hsl-transit.sh` (HITL).
+- [ ] **Step 3: Implement** via `enable-hsl-transit.sh` (HITL).
 
-**Step 4: Run test to verify pass** → PASS (2 passed). Commit.
+- [ ] **Step 4: Run test to verify pass** → PASS (2 passed)
+- [ ] **Step 5: Commit**
 
 ### Task E2: hsl-signer AppRole + exact-path policy (HCL)
 
@@ -702,7 +704,7 @@ def test_hsl_signing_key_present():
 - Create: `deployments/vault/scripts/enable-hsl-signer.sh` (HITL: create AppRole `hsl-signer`, bind policy, `token_ttl`/`token_max_ttl`, CIDR when stable).
 - Test: `tests/isolation/test_hsl_policy_lint.py` (reuse A2 linter on the real policy file).
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/isolation/test_hsl_policy_lint.py
 from pathlib import Path
@@ -712,9 +714,9 @@ def test_hsl_signer_policy_clean():
     assert lint_policy_text(txt, identity="hsl-signer") == []
 ```
 
-**Step 2: Run test to verify failure** → FAIL (file missing).
+- [ ] **Step 2: Run test to verify failure** → FAIL (file missing).
 
-**Step 3: Write minimal implementation**
+- [ ] **Step 3: Write minimal implementation**
 ```hcl
 # policies/hsl/hsl-signer.hcl
 # EXACT-PATH policy for the HSL signer AppRole. No wildcard, no sudo (spec §11.3).
@@ -730,7 +732,8 @@ path "transit/keys/hsl-transit/hsl-signing" {
 # Explicitly NO path "sys/*", NO path "auth/*", NO other consumers' mounts.
 ```
 
-**Step 4: Run test to verify pass** → PASS. Commit.
+- [ ] **Step 4: Run test to verify pass** → PASS
+- [ ] **Step 5: Commit**
 
 ### Task E3: Negative-capability matrix for hsl-signer
 
@@ -739,7 +742,7 @@ path "transit/keys/hsl-transit/hsl-signing" {
 **Files:**
 - Test: `tests/isolation/test_hsl_negative_capability.py`
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 # tests/isolation/test_hsl_negative_capability.py
 import os, pytest, hvac
@@ -773,11 +776,12 @@ def test_deny_list_delete_other_mounts():
         c.secrets.kv.v2.list_secrets(mount_point="github-kv", path="")
 ```
 
-**Step 2: Run test to verify failure** → FAIL (role not enabled / forbidden path works because not initialized).
+- [ ] **Step 2: Run test to verify failure** → FAIL (role not enabled / forbidden path works because not initialized).
 
-**Step 3: Implement** AppRole+policy via E2 script (HITL). No app code.
+- [ ] **Step 3: Implement** AppRole+policy via E2 script (HITL). No app code.
 
-**Step 4: Run test to verify pass** → PASS (4 passed); isolation gate green. Commit.
+- [ ] **Step 4: Run test to verify pass** → PASS (4 passed); isolation gate green
+- [ ] **Step 5: Commit**
 
 ### Task E4: Reusable consumer-isolation framework
 
@@ -787,9 +791,11 @@ def test_deny_list_delete_other_mounts():
 - Create: `src/isolation/matrix.py` (parametrized negative-test builder from a consumer contract).
 - Test: `tests/isolation/test_matrix_framework.py` (applies the HSL contract fixture and asserts the same denials generically).
 
-**Step 1: Write failing test** (framework imported, applies HSL contract, yields same denials).
+- [ ] **Step 1: Write failing test** (framework imported, applies HSL contract, yields same denials).
 
-**Step 2: Run → FAIL.** **Step 3: Implement** `matrix.py` with `build_negative_cases(contract)` returning the denial list. **Step 4: PASS.** Commit.
+- [ ] **Step 2: Run → FAIL.** 
+- [ ] **Step 3: Implement** `matrix.py` with `build_negative_cases(contract)` returning the denial list. 
+- [ ] **Step 4: PASS.** Commit.
 
 ---
 
@@ -802,7 +808,11 @@ def test_deny_list_delete_other_mounts():
 **Files:**
 - Test: `tests/contract/test_conformance.py` (assert consumer code path uses `CapabilityRequest` and never calls `vault` directly).
 
-**Step 1–4:** TDD around a `CapabilityBroker.request(req)` interface that returns a `Capability` envelope (no secret string), backed by the contract schema from A3. RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — TDD around a `CapabilityBroker.request(req)` interface that returns a `Capability` envelope (no secret string), backed by the contract schema from A3.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ### Task F2: VaultCredentialProvider adapter — DEFERRED to #18
 
@@ -824,7 +834,7 @@ def test_deny_list_delete_other_mounts():
 - Create: `src/lifecycle/states.py` (enums + transition guards).
 - Test: `tests/lifecycle/test_fail_closed.py`
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 from src.lifecycle.states import ServiceState, allowed, request_capability
 def test_sealed_denies_capability():
@@ -835,7 +845,10 @@ def test_audit_down_blocks_promotion():
     assert request_capability(ServiceState.UNSEALED_READY, audit_enabled=False) is False
 ```
 
-**Step 2–4:** Implement guards; RED→GREEN. Commit.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation** — Implement guards
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ### Task G2: Sanitized evidence tests
 
@@ -845,7 +858,11 @@ def test_audit_down_blocks_promotion():
 - Create: `src/evidence/redact.py`
 - Test: `tests/evidence/test_sanitization.py`
 
-**Step 1–4:** TDD redactor with deterministic patterns; assert no `s.`, `root_token`, `recovery_key`, `SecretID`, private-key PEM blocks survive. RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — TDD redactor with deterministic patterns; assert no `s.`, `root_token`, `recovery_key`, `SecretID`, private-key PEM blocks survive.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ### Task G3: Global invariants test
 
@@ -854,7 +871,11 @@ def test_audit_down_blocks_promotion():
 **Files:**
 - Test: `tests/lifecycle/test_global_invariants.py`
 
-**Step 1–4:** Scan repo for forbidden patterns (`namespace =`, `auto_unseal`, real secret regex, any path outside `pestoura/hermes-vault`), assert clean; assert `NO_AUTO_PROMOTION` documented in runbooks. RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — Scan repo for forbidden patterns (`namespace =`, `auto_unseal`, real secret regex, any path outside `pestoura/hermes-vault`), assert clean; assert `NO_AUTO_PROMOTION` documented in runbooks.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ---
 
@@ -868,7 +889,7 @@ def test_audit_down_blocks_promotion():
 - Create: `docs/runbooks/secret-zero.md` (wrapped SecretID issuance by hermes-vault operator; consumer bootstrap is controlled + audited, not "move secret to another file").
 - Test: `tests/secret_zero/test_secret_zero.py`
 
-**Step 1: Write failing test**
+- [ ] **Step 1: Write failing test**
 ```python
 def test_secret_zero_never_in_env_or_logs():
     import subprocess
@@ -881,7 +902,10 @@ def test_wrapped_single_use_short_ttl_contract():
                              risk_class="high", requested_ttl=120, capability_type=CapabilityType.wrapped_secret)
 ```
 
-**Step 2–4:** Implement `secret-zero.md` + extend schema acceptance; RED→GREEN. Commit.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation** — Implement `secret-zero.md` + extend schema acceptance
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ---
 
@@ -896,7 +920,11 @@ def test_wrapped_single_use_short_ttl_contract():
 - Modify: `README.md` (note HSL deployment is superseded for target architecture; hermes-vault owns the service).
 - Test: `tests/isolation/test_ownership_boundary.py` (asserts `deployments/vault/` owns the service and no `deployment/vault-lab-l1` replica is created here).
 
-**Step 1–4:** TDD: test that `deployments/vault/` owns the service and no consumer-owned Vault deployment replica is created. Implement docs + README note. RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — TDD: test that `deployments/vault/` owns the service and no consumer-owned Vault deployment replica is created. Implement docs + README note.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ### Task I2: Decommission/freeze HSL-owned deployment (post-validation, owner decision)
 
@@ -905,7 +933,11 @@ def test_wrapped_single_use_short_ttl_contract():
 **Files:**
 - Create: `docs/runbooks/hsl-decommission.md` (options: decommission / read-only verify / parallel-run; gated on key-continuity owner decision).
 
-**Step 1–4:** Document only; test asserts the doc lists the three options and the owner-decision gate. RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — Document only; test asserts the doc lists the three options and the owner-decision gate.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ---
 
@@ -925,7 +957,11 @@ def test_wrapped_single_use_short_ttl_contract():
 - hermes-vault owns the shared service; any PR that re-asserts lab-dedicated ownership is out of scope.
 - Action: NONE in this plan. The implementer reconciles the chain in the respective repositories with owner approval; this document is the recorded strategy only.
 
-**Step 1–4:** Add a doc-existence + content test (`tests/plans/test_pr_chain_doc.py` asserts the file exists and contains `#14`, `#15`, `#16`, `#17`, `SUPERSEDED`, `#18`, `provider-neutral`, `deferred`). RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — Add a doc-existence + content test (`tests/plans/test_pr_chain_doc.py` asserts the file exists and contains `#14`, `#15`, `#16`, `#17`, `SUPERSEDED`, `#18`, `provider-neutral`, `deferred`).
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ---
 
@@ -940,7 +976,11 @@ def test_wrapped_single_use_short_ttl_contract():
 
 **Content:** enumerates the migration steps from spec §17, marks them as out-of-repo, and records the three owner decisions required before execution (key continuity §25.1, network exposure §25.2, cutover vs parallel-run §25.3). Asserts hermes-vault does not modify HSL.
 
-**Step 1–4:** Doc-existence + content test (`tests/plans/test_hsl_boundary_doc.py`). RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — Doc-existence + content test (`tests/plans/test_hsl_boundary_doc.py`).
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ---
 
@@ -954,7 +994,11 @@ def test_wrapped_single_use_short_ttl_contract():
 - Create: `docs/runbooks/promotion-gates.md` (production gate = restore drill PASS + audit PASS + owner sign-off; HITL stops: init, unseal, root, SecretID issuance, TLS private material, promotion).
 - Test: `tests/lifecycle/test_no_auto_promotion.py` (asserts runbooks contain the gate and HITL markers; no code path performs promotion).
 
-**Step 1–4:** TDD doc + test. RED→GREEN. Commit.
+- [ ] **Step 1: Write failing test** — TDD doc + test.
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ---
 
@@ -974,7 +1018,11 @@ def test_wrapped_single_use_short_ttl_contract():
 4. **No live promotion:** HSL may use the shared service only after `RESTORE_DRILL_PASS` + `AUDIT_PASS` + owner sign-off, and only via the contract (fail-closed).
 5. **Verification handoff:** HSL-side conformance is validated by reusing the negative-capability matrix (E4) against the shared `hsl-signer` identity; the shared service owns the mounts/AppRole, HSL owns its application logic.
 
-**Step 1–4:** Doc-existence + content test (`tests/plans/test_hsl_handoff_doc.py` asserts the file exists and contains `pestoura/hermes-security-labs`, `does not modify HSL` (or `out-of-scope` + HSL repo path), `#18`, `deferred`, `hsl-transit`, `hsl-signer`). RED→GREEN. Commit C12.
+- [ ] **Step 1: Write failing test** — Doc-existence + content test (`tests/plans/test_hsl_handoff_doc.py` asserts the file exists and contains `pestoura/hermes-security-labs`, `does not modify HSL` (or `out-of-scope` + HSL repo path), `#18`, `deferred`, `hsl-transit`, `hsl-signer`).
+- [ ] **Step 2: Run test to verify failure** (RED)
+- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 4: Run test to verify pass** (GREEN)
+- [ ] **Step 5: Commit**
 
 ---
 
