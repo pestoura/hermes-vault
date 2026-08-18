@@ -16,4 +16,3 @@ vault-data/
 backups/
 
 # scratch task reports (gitignored, never commit)
-.superpowers/sdd/hermes-shared-vault-service/task-A4-report.md

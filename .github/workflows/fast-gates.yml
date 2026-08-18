@@ -19,7 +19,19 @@ jobs:
         run: pytest tests/policy_lint -q
       - name: contract-schema
         run: pytest tests/contract -q
+      # Fail-closed: rc=0 pass; rc=5 (no tests collected) tolerated only for
+      # these planned-but-empty suites; rc=1,2,3,4 propagate and fail the job.
       - name: lifecycle/invariants
-        run: pytest tests/lifecycle tests/evidence -q || true
+        run: |
+          rc=0
+          pytest tests/lifecycle tests/evidence -q || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 5 ]; then
+            echo "lifecycle/invariants failed (rc=$rc)"; exit "$rc"
+          fi
       - name: secret-zero
-        run: pytest tests/secret_zero -q || true
+        run: |
+          rc=0
+          pytest tests/secret_zero -q || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 5 ]; then
+            echo "secret-zero failed (rc=$rc)"; exit "$rc"
+          fi
