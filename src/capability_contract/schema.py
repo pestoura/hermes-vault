@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 class CapabilityType(str, Enum):
     delegated_operation = "delegated_operation"
@@ -22,3 +22,9 @@ class CapabilityRequest(BaseModel):
     request_id: Optional[str] = None
 
     model_config = {"extra": "forbid"}  # reject unexpected fields incl. any secret payload
+
+    @field_serializer("capability_type")
+    def _serialize_capability_type(self, value: Optional[CapabilityType]) -> Optional[str]:
+        # Emit a provider-neutral wire value string, not the Python Enum object.
+        # The live model attribute remains strongly typed as CapabilityType.
+        return value.value if value is not None else None
