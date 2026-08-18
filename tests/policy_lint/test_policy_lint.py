@@ -16,3 +16,28 @@ def test_sudo_rejected_for_normal_identity():
 def test_exact_path_accepted():
     good = 'path "transit/sign/hsl-transit/hsl-signing" { capabilities = ["update"] }'
     assert lint_policy_text(good, identity="hsl-signer") == []
+
+
+def test_commented_sudo_line_comment_ignored():
+    policy = (
+        '# capabilities = ["sudo"]\n'
+        'path "secret/foo" { capabilities = ["read"] }'
+    )
+    assert lint_policy_text(policy, identity="hsl-signer") == []
+
+
+def test_commented_sudo_block_comment_ignored():
+    policy = (
+        '/* capabilities = ["sudo"] */\n'
+        'path "secret/foo" { capabilities = ["read"] }'
+    )
+    assert lint_policy_text(policy, identity="hsl-signer") == []
+
+
+
+def test_commented_wildcard_line_comment_ignored():
+    policy = (
+        '# path "secret/*" { capabilities = ["read"] }\n'
+        'path "secret/foo" { capabilities = ["read"] }'
+    )
+    assert lint_policy_text(policy, identity="hsl-signer") == []

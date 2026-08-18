@@ -25,7 +25,36 @@ _PATH_BLOCK = re.compile(r'path\s*"([^"]*)"\s*\{', re.IGNORECASE)
 # Match a capabilities assignment and capture everything between the brackets.
 _CAPABILITIES = re.compile(r'capabilities\s*=\s*\[(.*?)\]', re.IGNORECASE | re.DOTALL)
 
+# Comment stripping must not touch quoted strings (active paths/capabilities),
+# so double-quoted literals are stashed before any comment marker is removed.
+_QUOTED = re.compile(r'"[^"]*"')
+_BLOCK_COMMENT = re.compile(r'/\*.*?\*/', re.DOTALL)
+_LINE_COMMENT = re.compile(r'(?:#|//)[^\n]*')
+
 ADMIN_IDENTITY = "hermes-vault-admin"
+
+
+def _strip_comments(text: str) -> str:
+    """Remove HCL ``#``/``//`` line comments and ``/* ... */`` block comments.
+
+    Quoted strings are preserved verbatim so a path such as ``secret/*`` or a
+    capability literal keeps its active meaning. This is deliberately a minimal
+    preprocessor, not a full HCL parser.
+    """
+    store: list[str] = []
+
+    def _stash(match: re.Match) -> str:
+        store.append(match.group(0))
+        return f"\x00Q{len(store) - 1}\x00"
+
+    protected = _QUOTED.sub(_stash, text)
+    protected = _BLOCK_COMMENT.sub("", protected)
+    protected = _LINE_COMMENT.sub("", protected)
+
+    def _restore(match: re.Match) -> str:
+        return store[int(match.group(1))]
+
+    return re.sub(r"\x00Q(\d+)\x00", _restore, protected)
 
 
 def lint_policy_text(text: str, identity: str) -> list[str]:
@@ -37,6 +66,10 @@ def lint_policy_text(text: str, identity: str) -> list[str]:
     """
     issues: list[str] = []
     is_admin = identity == ADMIN_IDENTITY
+
+    # Strip comments before analysis so commented-out capabilities/paths are
+    # never flagged. Active (uncommented) tokens are unchanged by this pass.
+    text = _strip_comments(text)
 
     for match in _PATH_BLOCK.finditer(text):
         path = match.group(1)
