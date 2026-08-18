@@ -7,9 +7,9 @@
 **Architecture:** Docker single-node Vault Community/OSS pinned by digest; Integrated Storage (Raft); mandatory TLS; manual Shamir 3/2 (no auto-unseal); one mandatory audit device with redaction; per-consumer dedicated mounts + exact-path policies + dedicated AppRoles; a provider-neutral capability contract (no secret material) defined in this repo; fail-closed lifecycle; secret-zero handled out-of-band. Existing HSL `deployment/vault-lab-l1/` patterns are generalized INTO this service; HSL becomes a consumer only. The concrete `VaultCredentialProvider` (#18) is explicitly deferred to PR-chain reconciliation and is NOT built here.
 
 **Tech Stack:** HashiCorp Vault 1.21.4 (Community/OSS, `@sha256` pinned to the HSL-validated digest), Docker / Compose, Python 3.11+ (PEP 668 → venv or uv), `pytest`, `hvac` (Vault client, implementation/test only), `pydantic` (contract schema), HCL policy files, `bash` gate scripts. No Enterprise/HCP features, no namespaces.
-**Spec:** docs/specs/2026-08-18-hermes-shared-vault-service-design.md
+**Spec:** `docs/specs/2026-08-18-hermes-shared-vault-service-design.md`
 
-**Source of truth:** `docs/specs/2026-08-18-hermes-shared-vault-service-design.md` (spec), ADRs `docs/13`, operating model `docs/15`. This plan implements the spec; it does not reopen superseded assumptions. PR #14–#16 are harvested for reusable work; #17 is a superseded governance action; #18 is deferred.
+**Additional sources:** ADRs `docs/13`, operating model `docs/15`. This plan implements the spec; it does not reopen superseded assumptions. PR #14–#16 are harvested for reusable work; #17 is a superseded governance action; #18 is deferred.
 
 ## Global Constraints
 
