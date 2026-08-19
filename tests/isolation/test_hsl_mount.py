@@ -24,48 +24,11 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.hitl  # live assertions require a local HITL Vault
-
 _SCRIPT = Path("deployments/vault/scripts/enable-hsl-transit.sh")
 
 # HSL dedicated Transit contract (spec §13): mount path + signing key name.
 _MOUNT_PATH = "hsl-transit"
 _KEY_NAME = "hsl-signing"
-
-# Synthetic secret-looking fragments. Assembled at RUNTIME (label + separator +
-# value) so no tracked source line contains a full `VAULT_TOKEN=...` literal that
-# would trip the repo's secret scanner. Test-only fixture, NOT a real
-# secret/exemption; the semantic contract (the value must never appear in
-# output) is preserved exactly.
-_LABEL_TOKEN = "VAULT_TOKEN"
-_SYNTH_VALUE = "ABCD_SYNTHETIC_VALUE_xyz"
-
-
-def _assemble_assignment(label: str, value: str) -> str:
-    # Build `label=value` at runtime so neither the label+value nor the
-    # `key=value` shape exists as a literal in the source tree.
-    return "".join((label, "=", value))
-
-
-def _executable_body(src: str) -> str:
-    """Return only parts of a bash script that could actually execute:
-    drop comment lines, and drop the body of any quoted heredoc (inert text)."""
-    out_lines = []
-    in_heredoc = False
-    for raw in src.splitlines():
-        line = raw.rstrip("\n")
-        stripped = line.strip()
-        if in_heredoc:
-            if stripped == "EOF":
-                in_heredoc = False
-            continue
-        if stripped.startswith("#"):
-            continue
-        if stripped.startswith("cat") and "<<'EOF'" in stripped:
-            in_heredoc = True
-            continue
-        out_lines.append(line)
-    return "\n".join(out_lines)
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +41,7 @@ def _live_env():
     return all(k in os.environ for k in ("VAULT_ADDR", "VAULT_CACERT", "VAULT_TOKEN"))
 
 
+@pytest.mark.hitl
 @pytest.mark.skipif(
     not _live_env(),
     reason="E1 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT/VAULT_TOKEN); "
@@ -95,6 +59,7 @@ def test_hsl_transit_mount_present():
     assert "hsl-transit/" in c.sys.list_mounted_secrets_engines()["data"]
 
 
+@pytest.mark.hitl
 @pytest.mark.skipif(
     not _live_env(),
     reason="E1 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT/VAULT_TOKEN); "
