@@ -43,23 +43,42 @@ _ALLOWED: dict[ServiceState, frozenset[ServiceState]] = {
 }
 
 
+def _recognized(value) -> ServiceState | None:
+    """Strictly resolve `value` to a known ServiceState, else None.
+
+    Fail-closed and total: NEVER raises. Non-hashable inputs (`[]`, `{}`),
+    arbitrary objects, and unrecognized strings all resolve to None so callers
+    can deny instead of propagating a TypeError/ValueError. Recognized
+    `ServiceState` members and exact member value strings are preserved.
+    """
+    if isinstance(value, ServiceState):
+        return value
+    if not isinstance(value, str):
+        return None
+    try:
+        if value in _VALID_MEMBERS:
+            return ServiceState(value)
+    except TypeError:  # pragma: no cover - defensive; str is always hashable
+        return None
+    return None
+
+
 def allowed(state, to) -> bool:
     """True iff the transition state -> to is an explicitly permitted edge.
 
     invalid/unrecognized states or targets are fail-closed to False. An
     unrecognized source or target must NOT silently degrade into a valid state
     (e.g. the ERROR recovery edge): only a known member value/name is accepted,
-    and the source is rejected before any coercion.
+    and the source is rejected before any coercion. Non-hashable or otherwise
+    invalid inputs deny rather than raising.
     """
-    if state not in _VALID_MEMBERS:
+    source = _recognized(state)
+    if source is None:
         return False
-    if isinstance(to, ServiceState):
-        target = to
-    elif to in _VALID_MEMBERS:
-        target = ServiceState(to)
-    else:
+    target = _recognized(to)
+    if target is None:
         return False
-    return target in _ALLOWED[ServiceState(state)]
+    return target in _ALLOWED[source]
 
 
 def request_capability(state, principal=None, audit_enabled=None) -> bool:
@@ -69,15 +88,18 @@ def request_capability(state, principal=None, audit_enabled=None) -> bool:
     Sealed, uninitialized, degraded, and decommissioned states deny — and so
     does any state with the audit device unavailable (spec §16.3: audit down
     blocks promotion/real-secret use). Any unrecognized state resolves to ERROR
-    and is denied.
+    and is denied. Non-hashable/invalid input denies rather than raising.
     """
-    if state not in _VALID_MEMBERS:
+    resolved = _recognized(state)
+    if resolved is None:
         return False
-    if ServiceState(state) != ServiceState.UNSEALED_READY:
+    if resolved != ServiceState.UNSEALED_READY:
         return False
-    # Audit must be EXPLICITLY enabled. Omitted / None / False all deny, per
-    # spec §16.3 (audit device down blocks promotion/real-secret use).
-    if not audit_enabled:
+    # Audit must be EXPLICITLY enabled: the boolean True singleton only. Omitted,
+    # None, False, and any truthy-but-not-True value ("no", 1, an object) all
+    # deny, per spec §16.3 (audit device down blocks promotion/real-secret use).
+    # A truthy sentinel is not proof the audit device is enabled.
+    if audit_enabled is not True:
         return False
     return True
 
@@ -87,9 +109,12 @@ def promotion_ready(state, restore_drill_passed=False, audit_passed=False, owner
 
     Requires the service to be UNSEALED_READY AND all three independent proofs:
     restore drill PASS + audit PASS + owner sign-off. Degraded/terminal states
-    are never promotion-ready regardless of proof.
+    are never promotion-ready regardless of proof. Unrecognized or non-hashable
+    state input denies rather than raising.
     """
-    state = ServiceState(state)
-    if state != ServiceState.UNSEALED_READY:
+    resolved = _recognized(state)
+    if resolved is None:
+        return False
+    if resolved != ServiceState.UNSEALED_READY:
         return False
     return bool(restore_drill_passed and audit_passed and owner_signoff)

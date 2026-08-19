@@ -125,6 +125,51 @@ def test_degraded_state_never_promotes():
     )
 
 
+# --- G1 fix round 2: audit must be strictly True (truthy non-True denies) ----
+
+
+def test_audit_enabled_must_be_strictly_true():
+    # Only the singleton True enables. Truthy non-True values (a string like
+    # "no", a nonzero int, an arbitrary object) must DENY — a truthy audit
+    # sentinel is not proof the audit device is enabled (spec §16.3).
+    assert request_capability(ServiceState.UNSEALED_READY, audit_enabled="no") is False
+    assert request_capability(ServiceState.UNSEALED_READY, audit_enabled="true") is False
+    assert request_capability(ServiceState.UNSEALED_READY, audit_enabled=1) is False
+    assert request_capability(ServiceState.UNSEALED_READY, audit_enabled=object()) is False
+    # And the single grant path still works with the True singleton.
+    assert request_capability(ServiceState.UNSEALED_READY, audit_enabled=True) is True
+
+
+# --- G1 fix round 2: guards fail closed on non-hashable/invalid input --------
+
+
+def test_allowed_fails_closed_on_nonhashable_source_and_target():
+    # Non-hashable / invalid inputs must DENY, never raise TypeError.
+    for bad in ([], {}, object()):
+        assert allowed(bad, to="UNINITIALIZED") is False
+        assert allowed(ServiceState.UNSEALED_READY, to=bad) is False
+        assert allowed(bad, to=bad) is False
+
+
+def test_request_capability_fails_closed_on_nonhashable_state():
+    for bad in ([], {}, object()):
+        assert request_capability(bad) is False
+        assert request_capability(bad, audit_enabled=True) is False
+
+
+def test_promotion_ready_fails_closed_on_nonhashable_state():
+    for bad in ([], {}, object()):
+        assert (
+            promotion_ready(
+                bad,
+                restore_drill_passed=True,
+                audit_passed=True,
+                owner_signoff=True,
+            )
+            is False
+        )
+
+
 # --- Fail-closed hardening: frozen default runtime state --------------------
 
 
