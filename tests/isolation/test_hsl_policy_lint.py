@@ -63,7 +63,7 @@ def test_hsl_signer_approle_present():
 def test_hsl_signer_policy_clean():
     # The committed exact-path policy must be clean for the `hsl-signer`
     # identity: no wildcard paths, no sudo, only the contract's
-    # sign/verify/read capabilities on hsl-transit/hsl-signing.
+    # sign/verify/read capabilities on the canonical hsl-transit mount.
     txt = _POLICY.read_text()
     assert lint_policy_text(txt, identity="hsl-signer") == []
 
@@ -73,9 +73,15 @@ def test_hsl_signer_policy_exact_paths_only():
     # capability specified (sign/verify -> update, keys read -> read). No
     # wildcard, no sudo, no sys/*, no auth/*, no other consumer mounts.
     txt = _POLICY.read_text()
-    assert 'path "transit/sign/hsl-transit/hsl-signing"' in txt
-    assert 'path "transit/verify/hsl-transit/hsl-signing"' in txt
-    assert 'path "transit/keys/hsl-transit/hsl-signing"' in txt
+    assert 'path "hsl-transit/sign/hsl-signing"' in txt
+    assert 'path "hsl-transit/verify/hsl-signing"' in txt
+    assert 'path "hsl-transit/keys/hsl-signing"' in txt
+    # Regression guard: the stale `transit/...` prefix (plan draft) is NOT the
+    # accepted E1 source-of-truth mount and would make the AppRole nonfunctional.
+    assert 'path "transit/' not in txt, (
+        "policy must bind the accepted E1 canonical mount hsl-transit, "
+        "not the stale transit/... prefix"
+    )
     # No forbidden broad scopes. Assert on comment-stripped text so the
     # explanatory "Explicitly NO path ..." comment never counts as a capability
     # (uses the same comment-preprocessing as lint_policy_text).
@@ -108,6 +114,31 @@ def test_enable_hsl_signer_script_present():
     # The script creates the AppRole via `vault write auth/approle/role/<name>`.
     assert "vault write" in src and "auth/approle/role/${APPROLE_NAME}" in src, \
         "script must create the hsl-signer AppRole via vault write"
+
+
+def test_enable_hsl_signer_token_lease_contract():
+    # Least-privilege lease contract (spec §11.3): short-lived signer token with
+    # an explicit max TTL, bound to exactly the hsl-signer policy.
+    src = _SCRIPT.read_text()
+    assert 'TOKEN_TTL="15m"' in src, "AppRole must declare token_ttl=15m"
+    assert 'TOKEN_MAX_TTL="1h"' in src, "AppRole must declare token_max_ttl=1h"
+    assert 'token_ttl="${TOKEN_TTL}"' in src, "token_ttl must be passed to vault write"
+    assert 'token_max_ttl="${TOKEN_MAX_TTL}"' in src, \
+        "token_max_ttl must be passed to vault write"
+    assert 'token_policies="${POLICY_NAME}"' in src, \
+        "token_policies must bind exactly the hsl-signer policy"
+
+
+def test_enable_hsl_signer_cidr_is_operator_supplied_optional():
+    # CIDR binding must be operator-supplied and optional — never a hardcoded
+    # broad CIDR (0.0.0.0/0 or similar) baked into the provider artifact.
+    src = _SCRIPT.read_text()
+    assert 'CIDR_BIND="${VAULT_HSL_SIGNER_CIDR:-}"' in src, \
+        "CIDR must come from the operator-supplied VAULT_HSL_SIGNER_CIDR, defaulting empty"
+    assert '[[ -n "${CIDR_BIND}" ]]' in src, \
+        "token_bound_cidrs must only be applied when the operator supplies a CIDR"
+    for broad in ("0.0.0.0/0", "::/0", "/0\"", "0.0.0.0"):
+        assert broad not in src, f"hardcoded broad CIDR forbidden: {broad!r}"
 
 
 def test_enable_hsl_signer_is_operator_hitl_only():

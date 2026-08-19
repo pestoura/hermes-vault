@@ -720,13 +720,13 @@ def test_hsl_signer_policy_clean():
 ```hcl
 # policies/hsl/hsl-signer.hcl
 # EXACT-PATH policy for the HSL signer AppRole. No wildcard, no sudo (spec §11.3).
-path "transit/sign/hsl-transit/hsl-signing" {
+path "hsl-transit/sign/hsl-signing" {
   capabilities = ["update"]
 }
-path "transit/verify/hsl-transit/hsl-signing" {
+path "hsl-transit/verify/hsl-signing" {
   capabilities = ["update"]
 }
-path "transit/keys/hsl-transit/hsl-signing" {
+path "hsl-transit/keys/hsl-signing" {
   capabilities = ["read"]
 }
 # Explicitly NO path "sys/*", NO path "auth/*", NO other consumers' mounts.
