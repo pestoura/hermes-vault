@@ -46,18 +46,20 @@ _ALLOWED: dict[ServiceState, frozenset[ServiceState]] = {
 def allowed(state, to) -> bool:
     """True iff the transition state -> to is an explicitly permitted edge.
 
-    Invalid/unrecognized states or targets are fail-closed to False. An
-    unrecognized target must NOT silently degrade into a valid state (e.g. the
-    ERROR edge): only a known member value/name is accepted.
+    invalid/unrecognized states or targets are fail-closed to False. An
+    unrecognized source or target must NOT silently degrade into a valid state
+    (e.g. the ERROR recovery edge): only a known member value/name is accepted,
+    and the source is rejected before any coercion.
     """
-    state = ServiceState(state)
+    if state not in _VALID_MEMBERS:
+        return False
     if isinstance(to, ServiceState):
         target = to
     elif to in _VALID_MEMBERS:
         target = ServiceState(to)
     else:
         return False
-    return target in _ALLOWED[state]
+    return target in _ALLOWED[ServiceState(state)]
 
 
 def request_capability(state, principal=None, audit_enabled=None) -> bool:
@@ -69,10 +71,13 @@ def request_capability(state, principal=None, audit_enabled=None) -> bool:
     blocks promotion/real-secret use). Any unrecognized state resolves to ERROR
     and is denied.
     """
-    state = ServiceState(state)
-    if state != ServiceState.UNSEALED_READY:
+    if state not in _VALID_MEMBERS:
         return False
-    if audit_enabled is not None and not audit_enabled:
+    if ServiceState(state) != ServiceState.UNSEALED_READY:
+        return False
+    # Audit must be EXPLICITLY enabled. Omitted / None / False all deny, per
+    # spec §16.3 (audit device down blocks promotion/real-secret use).
+    if not audit_enabled:
         return False
     return True
 

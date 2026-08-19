@@ -28,6 +28,33 @@ def test_audit_down_blocks_promotion():
     assert request_capability(ServiceState.UNSEALED_READY, audit_enabled=False) is False
 
 
+# --- G1 fix round 1: prior review Critical + Important (TDD RED first) -------
+
+
+def test_unknown_source_denies_even_with_valid_error_recovery_target():
+    # An unrecognized SOURCE must be fail-closed even when the target is a
+    # legitimate ERROR recovery edge (ERROR -> UNINITIALIZED / INITIALIZED_SEALED).
+    assert allowed("TOTALLY_BOGUS", to="UNINITIALIZED") is False
+    assert allowed("TOTALLY_BOGUS", to="INITIALIZED_SEALED") is False
+    assert allowed(12345, to="UNINITIALIZED") is False
+    assert allowed(12345, to="INITIALIZED_SEALED") is False
+
+
+def test_unsealed_ready_requires_explicit_audit_true():
+    # Omitted / None audit must DENY; only explicit True may serve (spec §16.3).
+    assert request_capability(ServiceState.UNSEALED_READY) is False
+    assert request_capability(ServiceState.UNSEALED_READY, audit_enabled=None) is False
+
+
+def test_recognized_error_source_recovers():
+    # Positive edge: a recognized ERROR source may take its recovery edges,
+    # keeping the transition assertions non-vacuous (and proving the unknown
+    # SOURCE rejection is narrow, not a blanket deny of all ERROR transitions).
+    assert allowed(ServiceState.ERROR, to="UNINITIALIZED") is True
+    assert allowed(ServiceState.ERROR, to="INITIALIZED_SEALED") is True
+    assert allowed(ServiceState.UNINITIALIZED, to="INITIALIZED_SEALED") is True
+
+
 # --- Fail-closed: the single grant path -------------------------------------
 
 
