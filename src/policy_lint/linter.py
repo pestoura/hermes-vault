@@ -12,7 +12,7 @@ regex):
   and is forbidden for normal identities.
 * A ``capabilities = [ ..., "sudo", ... ]`` block grants the ``sudo`` capability
   and is forbidden for identities other than ``hermes-vault-admin``.
-* The exact-path case ``transit/sign/hsl-transit/hsl-signing`` with ``update`` is
+* The exact-path case ``hsl-transit/sign/hsl-signing`` with ``update`` is
   accepted (returns no issues).
 * ``hermes-vault-admin`` is the only exempt identity (JIT admin, ADR-013).
 """

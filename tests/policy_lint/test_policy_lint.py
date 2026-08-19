@@ -14,7 +14,7 @@ def test_sudo_rejected_for_normal_identity():
 
 
 def test_exact_path_accepted():
-    good = 'path "transit/sign/hsl-transit/hsl-signing" { capabilities = ["update"] }'
+    good = 'path "hsl-transit/sign/hsl-signing" { capabilities = ["update"] }'
     assert lint_policy_text(good, identity="hsl-signer") == []
 
 
