@@ -180,7 +180,7 @@ def test_sudo_rejected_for_normal_identity():
     assert any("sudo" in i.lower() for i in issues)
 
 def test_exact_path_accepted():
-    good = 'path "transit/sign/hsl-transit/hsl-signing" { capabilities = ["update"] }'
+    good = 'path "hsl-transit/sign/hsl-signing" { capabilities = ["update"] }'
     assert lint_policy_text(good, identity="hsl-signer") == []
 ```
 

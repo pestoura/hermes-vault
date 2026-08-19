@@ -98,7 +98,9 @@ Each consumer (e.g. HSL, future GitHub tool, Grafana tool, etc.) is isolated by:
 
 1. **Dedicated mounts.** Separate secrets/transit mounts per consumer (e.g. `kv-hsl/`, `hsl-transit/`), not a shared `secret/` tree with path prefixes alone. This provides isolation without Enterprise namespaces.
 2. **Dedicated AppRole.** One AppRole per consumer identity, with RoleID + wrapped single-use SecretID, bounded TTL, CIDR limits when stable.
-3. **Exact-path policies.** Policies grant only the precise paths the consumer needs (e.g. `transit/sign/hsl-transit/hsl-signing`, `transit/verify/hsl-transit/hsl-signing`, `transit/keys/hsl-transit/hsl-signing` read-metadata). No `path "*"` for normal operation.
+3. **Exact-path policies.** Policies grant only the precise paths the consumer needs (e.g. `hsl-transit/sign/hsl-signing`, `hsl-transit/verify/hsl-signing`, `hsl-transit/keys/hsl-signing` read-metadata). No `path "*"` for normal operation.
+
+> Reconciliation note: the `hsl-transit/` mount is the canonical dedicated HSL Transit mount; the HSL signer exact-path contract uses `hsl-transit/sign|verify|keys/hsl-signing` (no `transit/` prefix), matching the accepted E1 mount/key and E2 policy.
 4. **Negative-capability tests.** For every consumer AppRole, automated tests assert denial of:
    - any path outside its dedicated mount(s);
    - `sys/*`, `auth/*`, `identity/*` administrative paths;
