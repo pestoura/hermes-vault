@@ -9,7 +9,16 @@
 #     NO parallel live Vault, HSL deployment never promoted, HSL main no longer
 #     carries `deployment/vault-lab-l1`);
 #   * an explicit gate on the key-continuity OWNER DECISION / sign-off
-#     (spec §21 risk row / §25.1) before any later freeze/decommission;
+#     (spec §20 key-continuity risk row / §25.1) before any later
+#     freeze/decommission. Normative reference is spec §20 (the risk table that
+#     carries the key-continuity row) plus §25.1 (the unresolved owner
+#     decision); the "(§21)" pointer inside that spec table cell points at the
+#     testing section and is not the location of the row itself. The runbook
+#     Provenance block and this test both use §20/§25.1;
+#   * that the two structural claims ("never promoted", "HSL main no longer
+#     carries deployment/vault-lab-l1") are labelled as OBSERVATIONS inherited
+#     from Task I1 / earlier read-only verification and explicitly NOT
+#     re-verified in Task I2;
 #   * that the actual HSL mutation is OUT OF SCOPE / NOT_RUN here.
 #
 # Offline/static only. No Vault started, no token/key/secret, no remote contact,
@@ -67,6 +76,46 @@ def test_runbook_states_direct_ownership_migration_no_parallel_live_vault():
 
 
 # ---------------------------------------------------------------------------
+# 3b) The two structural claims must be labelled as INHERITED OBSERVATIONS
+#     (from I1 / earlier read-only verification), explicitly NOT re-verified in
+#     Task I2. They must not be presented as newly verified facts.
+# ---------------------------------------------------------------------------
+def test_runbook_labels_structural_claims_as_inherited_unverified_observations():
+    text = _text()
+    low = text.lower()
+
+    assert "observation" in low, (
+        "runbook must label the structural claims as observations, not verified facts"
+    )
+    assert "inherited" in low, (
+        "runbook must state the observations are inherited (from I1 / earlier "
+        "read-only verification), not established in I2"
+    )
+    assert "task i1" in low or "i1" in text, (
+        "runbook must attribute the observations to Task I1 / earlier read-only "
+        "verification"
+    )
+    assert "read-only" in low, (
+        "runbook must state the observations came from read-only verification"
+    )
+    assert "not re-verified" in low or "not reverified" in low, (
+        "runbook must state the observations were NOT re-verified in Task I2"
+    )
+    assert "i2" in low, (
+        "runbook must scope the non-re-verification to Task I2"
+    )
+
+    # The claims must not be asserted as freshly verified facts in I2.
+    for bad in (
+        "structural facts, verified read-only",
+        "newly verified",
+    ):
+        assert bad not in low, (
+            f"runbook must not present the inherited observations as {bad!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # 4) Key-continuity owner decision gate is explicit and blocks execution.
 # ---------------------------------------------------------------------------
 def test_runbook_gates_execution_on_key_continuity_owner_decision():
@@ -78,6 +127,9 @@ def test_runbook_gates_execution_on_key_continuity_owner_decision():
     assert "sign-off" in low or "sign off" in low, "runbook must require owner sign-off"
     assert "§25.1" in _text() or "25.1" in _text(), (
         "runbook must cite the spec decision reference (§25.1)"
+    )
+    assert "§20" in _text() or "§ 20" in _text(), (
+        "runbook must cite the spec key-continuity risk reference (§20), not §21"
     )
     assert "gate" in low or "gated" in low, (
         "runbook must state the gate explicitly"

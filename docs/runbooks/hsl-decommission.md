@@ -4,6 +4,8 @@ Provenance:
   source_plan: docs/superpowers/plans/2026-08-18-hermes-shared-vault-service.md (Task I2)
   spec: docs/specs/2026-08-18-hermes-shared-vault-service-design.md (§17 migration, §20 key-continuity risk row, §25.1 unresolved owner decision, §25.3 cutover vs parallel-run)
   reference_read_only: pestoura/hermes-security-labs `deployment/vault-lab-l1`
+  inherited_observations: HSL-state claims below are inherited from Task I1 /
+        earlier read-only verification and are NOT re-verified in Task I2.
   worktree: hermes-shared-vault-service-implementation
   mode: DOCUMENTED ONLY — repo-side / static. No Vault started, no HSL mutation,
         no deletion, no credential or secret material, no remote contact.
@@ -25,13 +27,23 @@ read-only.
 The approved ruling in force for this migration is:
 
 - **Direct ownership migration, with NO parallel live Vault.**
-- Rationale (structural facts, verified read-only):
-  - The HSL Vault deployment was **never promoted** — it never reached a
-    promoted/production state, so there is no promoted live instance whose
-    continuity must be preserved across a transition window.
-  - HSL `main` **no longer carries** `deployment/vault-lab-l1` — the directory is
-    not tracked on HSL trunk, so there is no live consumer-owned deployment left
-    in the trunk line to run in parallel or to decommission on trunk.
+- Basis: two structural **observations inherited from Task I1 / earlier
+  read-only verification**. They are recorded here as **inherited observations,
+  NOT re-verified in Task I2** (this task performs no remote contact, no HSL
+  read, and no cross-repo inspection), and they must not be read as facts newly
+  established or re-confirmed by I2:
+  - *Observation (inherited from I1, read-only, not re-verified in I2):* the HSL
+    Vault deployment was **never promoted** — it never reached a
+    promoted/production state, so on that basis there is no promoted live
+    instance whose continuity must be preserved across a transition window.
+  - *Observation (inherited from I1, read-only, not re-verified in I2):* HSL
+    `main` **no longer carries** `deployment/vault-lab-l1` — the directory was
+    not tracked on HSL trunk at the time of that read-only verification, so on
+    that basis there is no live consumer-owned deployment left in the trunk line
+    to run in parallel or to decommission on trunk.
+  - Both observations must be **re-confirmed by the owner against live HSL state
+    before ANY execution**; if either no longer holds, the ruling's basis must be
+    revisited.
 - Consequence: option B (read-only verify) and option C (parallel-run) below are
   documented for completeness and for the historical-signature case only; they
   are **not** the approved path. The approved path is option A framing as a
@@ -75,8 +87,9 @@ Gate rules:
 - Preconditions: shared path validated (mount/key/AppRole + negative-capability
   tests green), restore drill PASS, audit PASS, **and** key-continuity owner
   sign-off per the gate above.
-- Notes: because the HSL deployment was never promoted and HSL trunk no longer
-  carries `deployment/vault-lab-l1`, this is the approved path and requires **no
+- Notes: on the basis of the two inherited observations above (never promoted;
+  HSL trunk no longer carries `deployment/vault-lab-l1`) — **inherited from I1,
+  not re-verified in I2** — this is the approved path and requires **no
   parallel live Vault**.
 - Historical evidence: only safe once the owner selects re-sign or an explicit
   verify-continuity policy (options 2/3 of the gate).
@@ -111,7 +124,9 @@ Gate rules:
 - HSL consumes via the published contract (`hsl-transit/hsl-signing`,
   `hsl-signer` AppRole). Cross-repo HSL repointing/handoff (K1/M1) is specified,
   not performed.
-- **No HSL mutation** is performed by this runbook or by Task I2.
+- **No HSL mutation** is performed by this runbook or by Task I2. `hermes-vault`
+  does not modify `pestoura/hermes-security-labs` (INV-11); the HSL reference is
+  read-only and descriptive of the ownership boundary only.
 
 ## NOT_RUN / out-of-scope (by design — never executed here)
 
@@ -128,7 +143,12 @@ Gate rules:
 
 - `tests/isolation/test_hsl_decommission_doc.py` asserts this runbook exists,
   lists the three options, states the approved ruling (direct ownership
-  migration / no parallel live Vault / never promoted / HSL main no longer
-  carries the path), gates execution on the key-continuity owner decision and
+  migration / no parallel live Vault), keeps the two structural claims
+  ("never promoted", "HSL main no longer carries the path") labelled as
+  observations inherited from I1 / earlier read-only verification and **not
+  re-verified in I2**, gates execution on the key-continuity owner decision and
   sign-off, and keeps HSL mutation out of scope / NOT_RUN.
+- Repo-side VERIFIED in I2: only the static/textual properties of this runbook.
+  The inherited HSL-state observations are **NOT_RUN / not re-verified** in I2
+  and remain owner-gated against live HSL state.
 - Offline/static only; no Vault, no secrets, no remotes.
