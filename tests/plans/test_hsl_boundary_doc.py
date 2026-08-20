@@ -22,6 +22,7 @@
 # Offline/static only. No Vault started, no credentials, no remote contact, no HSL
 # mutation, no secret material. Mirrors the J1 doc-test style.
 from pathlib import Path
+import re
 
 _DOC = Path("docs/plans/hsl-consumer-migration-boundary.md")
 
@@ -83,7 +84,7 @@ def test_hsl_boundary_doc_marks_migration_separate_and_out_of_repo():
 
 
 # ---------------------------------------------------------------------------
-# 4) The three owner decisions (§25.1 / §25.2 / §25 aren't executed here).
+# 4) The three owner decisions (§25.1 / §25.2 / §25.3 aren't executed here).
 # ---------------------------------------------------------------------------
 def test_hsl_boundary_doc_records_three_owner_decisions():
     text = _text()
@@ -108,21 +109,18 @@ def test_hsl_boundary_doc_records_three_owner_decisions():
 def test_hsl_boundary_doc_hermes_vault_owns_and_does_not_modify_hsl():
     text = _text()
     low = text.lower()
+    # hermes-vault owns the shared service (spec §3, §15, §17, ADR-013).
     assert "hermes-vault owns" in low or "owns the shared service" in low, (
         "doc must state hermes-vault owns the shared service"
     )
-    assert "does not modify" in low or "does not" in low and "modify" in low, (
-        "doc must assert hermes-vault does not modify HSL"
+    # Specific semantic phrase tying hermes-vault to "does not modify"
+    # pestoura/hermes-security-labs (INV-11) — no loose precedence.
+    norm = re.sub(r"[`*]", "", re.sub(r"\s+", " ", low))
+    phrase = "hermes-vault does not modify pestoura/hermes-security-labs"
+    assert phrase in norm, (
+        "doc must state hermes-vault does not modify pestoura/hermes-security-labs (INV-11)"
     )
     assert "inv-11" in low, "doc must reference INV-11 scope boundary"
-    if "hermes-security-labs" in low:
-        assert (
-            "does not" in low
-            or "does not modify" in low
-            or "no hsl mutation" in low
-            or "no hsl write" in low
-            or "not modify" in low
-        ), "INV-11: HSL reference must be framed as non-mutating boundary"
 
 
 # ---------------------------------------------------------------------------
@@ -178,4 +176,23 @@ def test_hsl_boundary_doc_no_mutation_no_credentials_no_secrets():
     # Explicit no-credential / no-secret assertion.
     assert "no credentials" in low or "no secret" in low or "no live credentials" in low, (
         "doc must assert no credentials/secrets are used"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 9) INV-11 / non-mutation: no remote-mutating command is performed OR instructed.
+# ---------------------------------------------------------------------------
+def test_hsl_boundary_doc_inv11_no_remote_mutating_command_performed_or_instructed():
+    low = _text().lower()
+    norm = re.sub(r"[`*]", "", re.sub(r"\s+", " ", low))
+    # INV-11 explicitly and grammatically states no remote-mutating command
+    # (push, PR, or API call) is performed OR instructed here.
+    assert "no remote-mutating command" in norm, (
+        "INV-11 must state the no remote-mutating command boundary"
+    )
+    assert "push, pr, or api call" in norm, (
+        "INV-11 must enumerate push / PR / API call as remote-mutating kinds"
+    )
+    assert ("performed" in norm and "instructed" in norm), (
+        "INV-11 must state such commands are neither performed nor instructed here"
     )

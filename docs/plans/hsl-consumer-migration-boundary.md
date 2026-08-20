@@ -80,7 +80,7 @@ cross-repo HSL repointing is specified here as a boundary, not performed.
 This document does not write to `pestoura/hermes-security-labs` or any other
 repo. References to `hermes-security-labs` are descriptive ownership-boundary
 notes only. No remote-mutating command (push, PR, or API call) is performed or
-No Vault runtime, token, Shamir share, or TLS private
+instructed here. No Vault runtime, token, Shamir share, or TLS private
   material is referenced, generated, or read. **No credentials** and **no secrets**
   are used in K1.
 
