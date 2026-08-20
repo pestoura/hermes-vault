@@ -135,6 +135,10 @@ sequenceDiagram
 - sanitized inventory and workload-identity templates;
 - implementation checklist and a dedicated resume point.
 
+## Ownership & HSL generalization
+
+`hermes-vault` **owns** the shared Vault service lifecycle (deployment, policy, bootstrap, recovery). The working patterns from `pestoura/hermes-security-labs` `deployment/vault-lab-l1` (single-node Raft, TLS, AppRole signer, transit key) have been generalized INTO this shared service as the canonical baseline under `deployments/vault/` (see [`docs/runbooks/hsl-generalization.md`](docs/runbooks/hsl-generalization.md)). The HSL deployment is **superseded** for the target architecture; HSL is a consumer of the shared service only and does not re-own the deployment. `hermes-vault` performs no write to HSL; cross-repo HSL migration is out of scope here.
+
 ## What it does **not** contain today
 
 - a deployed Vault server/cluster;
