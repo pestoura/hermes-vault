@@ -64,3 +64,53 @@ def test_admin_classes_are_scoped_by_control_plane_domain():
     assert any(p.startswith("auth/token") for p in _active_paths(_text(ADMIN_POLICIES["vault-admin-token"])))
     assert any(p.startswith("sys/mounts") for p in _active_paths(_text(ADMIN_POLICIES["vault-admin-secrets-engine"])))
     assert any(p.startswith("sys/audit") for p in _active_paths(_text(ADMIN_POLICIES["vault-admin-audit"])))
+
+SCRIPT = Path("deployments/vault/scripts/bootstrap-jit-admin.sh")
+CHECKLIST = Path("deployments/vault/scripts/bootstrap-checklist.sh")
+
+
+def test_jit_bootstrap_script_is_hitl_audit_gated_and_public_cert_only():
+    assert SCRIPT.is_file()
+    src = _text(SCRIPT)
+    assert "VAULT_JIT_ADMIN_OPERATOR_ACK" in src
+    assert "VAULT_ADMIN_CERT_PEM" in src
+    assert "vault audit list" in src
+    assert "AUDIT_REQUIRED" in src
+    assert "vault auth list" in src and "vault auth enable cert" in src
+    for forbidden in ("vault operator init", "vault operator unseal", "vault token revoke", "vault login", "client-key"):
+        assert forbidden not in src
+    assert "PRIVATE KEY" not in src
+
+
+def test_jit_bootstrap_applies_all_policy_classes_and_issuer_cert_role():
+    src = _text(SCRIPT)
+    for policy in ("vault-admin-issuer", *ADMIN_POLICIES.keys()):
+        assert f"vault policy write {policy}" in src
+    assert "auth/cert/certs/vault-admin-issuer" in src
+    assert "certificate=@${VAULT_ADMIN_CERT_PEM}" in src
+    assert "token_policies=vault-admin-issuer" in src
+    assert "token_no_default_policy=true" in src
+    assert "token_explicit_max_ttl=5m" in src
+
+
+def test_jit_token_role_is_exactly_bounded_to_classed_admin_policies():
+    src = _text(SCRIPT)
+    assert "auth/token/roles/hermes-vault-admin" in src
+    assert "orphan=true" in src
+    assert "renewable=false" in src
+    assert "token_no_default_policy=true" in src
+    assert "token_explicit_max_ttl=10m" in src
+    assert "disallowed_policies=default,root" in src
+    expected = ",".join(ADMIN_POLICIES.keys())
+    assert f"allowed_policies={expected}" in src
+    role_block = src.split('auth/token/roles/hermes-vault-admin', 1)[1]
+    assert "allowed_policies=root" not in role_block
+
+
+def test_bootstrap_checklist_moves_audit_before_jit_admin_and_root_revoke():
+    text = _text(CHECKLIST)
+    low = text.lower()
+    assert "enable audit" in low
+    assert "jit" in low and "cert" in low
+    assert "revoke initial root" in low
+    assert low.index("enable audit") < low.index("jit") < low.index("revoke initial root")
