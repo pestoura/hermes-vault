@@ -10,6 +10,7 @@
 #   * SECURITY.md documents that TLS private material is operator-custodied out
 #     of the repo.
 import re
+import subprocess
 from pathlib import Path
 
 _VAULT_DIR = Path("deployments/vault")
@@ -24,8 +25,16 @@ _CERT_PATHS = (
 )
 
 
+def _tracked_vault_files() -> list[Path]:
+    proc = subprocess.run(
+        ["git", "ls-files", "-z", "--", str(_VAULT_DIR)],
+        check=True, capture_output=True, text=True,
+    )
+    return [Path(raw) for raw in proc.stdout.split("\0") if raw]
+
+
 def test_tls_private_key_not_in_repo():
-    bad = list(_VAULT_DIR.rglob("*.key"))
+    bad = [f for f in _tracked_vault_files() if f.suffix == ".key"]
     assert bad == [], f"private key committed: {bad}"
 
 
@@ -95,7 +104,7 @@ def test_no_secret_material_in_deployment_sources():
         re.compile(r"-----BEGIN CERTIFICATE REQUEST-----"),
     )
     hits = []
-    for f in _VAULT_DIR.rglob("*"):
+    for f in _tracked_vault_files():
         if not f.is_file():
             continue
         if f.suffix in (".key", ".pem") or "certs/" in str(f):
@@ -109,3 +118,13 @@ def test_no_secret_material_in_deployment_sources():
             if pat.search(text):
                 hits.append(f"secret-material pattern {pat.pattern} in {f}")
     assert hits == [], "secret material found in deployment sources:\n" + "\n".join(hits)
+
+
+def test_repo_secret_scan_scope_excludes_gitignored_runtime_artifacts():
+    runtime = _VAULT_DIR / "certs" / "synthetic-runtime.key"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_text("synthetic-runtime-fixture\n")
+    try:
+        assert runtime not in _tracked_vault_files()
+    finally:
+        runtime.unlink(missing_ok=True)
