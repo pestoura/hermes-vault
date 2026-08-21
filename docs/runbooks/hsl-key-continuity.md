@@ -1,6 +1,6 @@
 # HSL key continuity and controlled signing cutover
 
-**Status:** approved transition design. Shared Vault live deployment/start and TLS pre-init connectivity are `VERIFIED_PRE_INIT` (2026-08-21); initialization/unseal and all HSL migration/cutover acceptance remain `NOT_RUN` until the mandatory HITL gates are satisfied.
+**Status:** approved transition design. Shared Vault live deployment/start and TLS pre-init connectivity are `VERIFIED_PRE_INIT` (2026-08-21); initialization is `VERIFIED_INITIALIZED_SEALED`; unseal and all HSL migration/cutover acceptance remain `NOT_RUN` until the mandatory HITL gates are satisfied.
 
 **Owner boundary:** `pestoura/hermes-vault` owns the shared Vault service. `pestoura/hermes-security-labs` is a consumer and is not modified by this runbook.
 
@@ -89,7 +89,7 @@ After entry into `SHARED_SIGN_ACTIVE_LEGACY_VERIFY_ONLY`, automatic rollback to 
 This runbook does not execute any of the following:
 
 - HSL repository/configuration mutation — `NOT_RUN`;
-- live Vault start/TLS pre-init — `VERIFIED_PRE_INIT` (2026-08-21); init/unseal — `NOT_RUN`;
+- live Vault start/TLS pre-init — `VERIFIED_PRE_INIT` (2026-08-21); init — `VERIFIED_INITIALIZED_SEALED` (2026-08-21); unseal — `NOT_RUN`;
 - Transit mount/key creation — `NOT_RUN`;
 - AppRole/SecretID/token issuance — `NOT_RUN`;
 - TLS private-key generation — `VERIFIED_PROVISIONED` (2026-08-21); material remains operator-custodied, git-ignored and absent from this document;

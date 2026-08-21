@@ -1,6 +1,6 @@
 # HSL-owned deployment decommission / verify-retention runbook
 
-**Status:** approved transition design. External HSL mutation/cutover remains `NOT_RUN`. Shared Vault deployment/start and TLS pre-init connectivity are `VERIFIED_PRE_INIT` (2026-08-21), while init/unseal/audit/consumer acceptance remain separately gated.
+**Status:** approved transition design. External HSL mutation/cutover remains `NOT_RUN`. Shared Vault deployment/start and TLS pre-init connectivity are `VERIFIED_PRE_INIT` (2026-08-21), while initialization is `VERIFIED_INITIALIZED_SEALED` and unseal/audit/consumer acceptance remain separately gated.
 
 **Owner:** `pestoura/hermes-vault` owns the shared service. This runbook never writes to `pestoura/hermes-security-labs`. **hermes-vault does not modify pestoura/hermes-security-labs** under this runbook.
 
