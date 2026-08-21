@@ -103,7 +103,7 @@ def test_contract_raft_storage_mode():
     hcl = _hcl()
     assert 'storage "raft"' in hcl
     assert "node_id" in hcl
-    assert "/vault/data" in hcl
+    assert "/vault/file" in hcl
     # No competing storage backend is configured.
     for other in (
         'storage "file"',
