@@ -129,3 +129,15 @@ def test_start_mounts_ephemeral_group_readable_runtime_snapshot_copy():
     assert 'install -m 0640 "${snap}" "${runtime_snap}"' in start
     assert '-v "${runtime_snap}:/vault/restore/input.snapshot:ro"' in start
     assert '-v "${snap}:/vault/restore/input.snapshot:ro"' not in start
+
+
+def test_start_mounts_ephemeral_group_readable_acceptance_assets():
+    src = _src()
+    start = src.split('cmd_start()', 1)[1].split('cmd_status()', 1)[0]
+    assert 'runtime_client="${runtime}/client"' in start
+    assert 'install -m 0640 "${run}/restore-acceptance.pem" "${runtime_client}/restore-acceptance.pem"' in start
+    assert 'install -m 0640 "${run}/restore-acceptance.key" "${runtime_client}/restore-acceptance.key"' in start
+    assert '-v "${runtime_client}/restore-acceptance.pem:/vault/restore/client/restore-acceptance.pem:ro"' in start
+    assert '-v "${runtime_client}/restore-acceptance.key:/vault/restore/client/restore-acceptance.key:ro"' in start
+    assert '-v "${run}/restore-acceptance.pem:/vault/restore/client/restore-acceptance.pem:ro"' not in start
+    assert '-v "${run}/restore-acceptance.key:/vault/restore/client/restore-acceptance.key:ro"' not in start

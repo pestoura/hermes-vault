@@ -134,7 +134,7 @@ wait_for_uninitialized() {
 }
 
 cmd_start() {
-  local run run_id container snap runtime runtime_snap cid sha
+  local run run_id container snap runtime runtime_snap runtime_client cid sha
   run="$(canonical_run_dir "${1:?run directory required}")"
   run_id="$(run_id_for "${run}")"
   container="$(container_for "${run_id}")"
@@ -146,7 +146,12 @@ cmd_start() {
 
   prepare_runtime_assets "${run}"
   runtime_snap="${runtime}/input.snapshot"
+  runtime_client="${runtime}/client"
+  mkdir -p "${runtime_client}"
+  chmod 750 "${runtime_client}"
   install -m 0640 "${snap}" "${runtime_snap}"
+  install -m 0640 "${run}/restore-acceptance.pem" "${runtime_client}/restore-acceptance.pem"
+  install -m 0640 "${run}/restore-acceptance.key" "${runtime_client}/restore-acceptance.key"
   cat > "${runtime}/config/restore.hcl" <<'EOF'
 ui = false
 disable_mlock = true
@@ -186,8 +191,8 @@ EOF
     -v "${runtime}/audit:/vault/logs:rw" \
     -v "${runtime}/tls:/vault/certs:ro" \
     -v "${runtime_snap}:/vault/restore/input.snapshot:ro" \
-    -v "${run}/restore-acceptance.pem:/vault/restore/client/restore-acceptance.pem:ro" \
-    -v "${run}/restore-acceptance.key:/vault/restore/client/restore-acceptance.key:ro" \
+    -v "${runtime_client}/restore-acceptance.pem:/vault/restore/client/restore-acceptance.pem:ro" \
+    -v "${runtime_client}/restore-acceptance.key:/vault/restore/client/restore-acceptance.key:ro" \
     "${IMAGE}" server)"; then
     rm -rf -- "${runtime}"
     fail "docker run failed"
