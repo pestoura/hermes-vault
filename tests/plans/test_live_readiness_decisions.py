@@ -62,6 +62,15 @@ def test_spec_section_25_records_all_resolutions_without_runtime_claim():
     assert "does not claim live implementation" in text.lower()
 
 
+def test_resolved_spec_has_no_stale_open_decision_language():
+    text = _text(SPEC)
+    low = text.lower()
+    assert "exact bind/port is an owner decision" not in low
+    assert "key-continuity decision (§19) is made" not in text
+    assert "ADR-019" in text and "hermes-security-plane" in text
+    assert "ADR-018" in text and "ADR-020" in text
+
+
 def test_compose_uses_private_internal_security_plane_and_loopback_publication():
     comp = yaml.safe_load(_text(COMPOSE))
     vault = comp["services"]["vault"]
