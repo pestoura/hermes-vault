@@ -1,6 +1,6 @@
 # Hermes Shared Vault Service — Design Spec
 
-- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/start: `VERIFIED_PRE_INIT` on HermesJarvas (2026-08-21); Vault initialization: `VERIFIED_INITIALIZED_SEALED`; Vault unseal: `NOT_RUN`.** The verified runtime state is `initialized=true`, `sealed=true`, Shamir `n=3`, threshold `t=2`; no share or root token is recorded here. This does **not** imply `VAULT_HEALTH_PASS`, `VAULT_UNSEALED`, audit, restore, consumer acceptance or production readiness.
+- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/start: `VERIFIED_PRE_INIT` on HermesJarvas (2026-08-21); Vault initialization: `VERIFIED_INITIALIZED_SEALED`; Vault unseal: `VERIFIED_UNSEALED_HEALTHY`. `VAULT_HEALTH_PASS` and `VAULT_UNSEALED` are VERIFIED.** Runtime verification observed `initialized=true`, `sealed=false`, Raft storage, Docker health `healthy`, and strict-TLS `/v1/sys/health` HTTP 200. Shamir remains `n=3`, threshold `t=2`; no share or root token is recorded here. **Audit enablement, administrative bootstrap, restore drill, consumer acceptance and production readiness remain `NOT_RUN`.** `UNSEALED_READY` is therefore not yet claimed.
 - **Original design date:** 2026-08-18
 - **Structural decision update:** 2026-08-21
 - **Original design base SHA:** `fec7b5b0a63165a93f5b6e919959094cfced569a`
@@ -270,7 +270,7 @@ Live gates remain separate and may only be claimed after execution:
 
 ## 22. Original design/spec change invariants (historical)
 
-The following held for the **original design/spec change** only. They are preserved as provenance and are not claims about the current repository-side implementation. **Current implementation acceptance** is governed by §21.2 and the active implementation plan. Live Vault deployment/start and strict-TLS pre-init connectivity were separately executed and verified on HermesJarvas on 2026-08-21. Vault initialization, Shamir unseal, audit enablement, restore drill, consumer bootstrap and production promotion remain `NOT_RUN` until separately executed and evidenced.
+The following held for the **original design/spec change** only. They are preserved as provenance and are not claims about the current repository-side implementation. **Current implementation acceptance** is governed by §21.2 and the active implementation plan. Live Vault deployment/start, initialization and Shamir quorum unseal were separately executed and verified on HermesJarvas on 2026-08-21. `VAULT_HEALTH_PASS` and `VAULT_UNSEALED` are verified from strict-TLS HTTP 200 plus `initialized=true` / `sealed=false`. Audit enablement, administrative bootstrap, restore drill, consumer bootstrap and production promotion remain `NOT_RUN` until separately executed and evidenced.
 
 - No Vault runtime was installed, started, initialized, unsealed, or modified by the original spec change.
 - No root token, recovery key, Shamir share, SecretID, or token was created, read, printed, or transmitted.
