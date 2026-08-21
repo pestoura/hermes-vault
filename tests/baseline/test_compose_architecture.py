@@ -60,8 +60,10 @@ def test_runtime_runs_directly_as_vault_user_without_bootstrap_capabilities():
     assert vault.get("cap_drop") == ["ALL"]
     assert "cap_add" not in vault, "runtime must not add capabilities"
     env = vault.get("environment", {})
-    assert "SKIP_SETCAP" not in env, "non-root runtime must not need root-entrypoint bypasses"
-    assert "SKIP_CHOWN" not in env, "non-root runtime must not need root-entrypoint bypasses"
+    assert str(env.get("SKIP_SETCAP")) == "1", (
+        "official entrypoint runs setcap regardless of UID; skip it because mlock is disabled"
+    )
+    assert "SKIP_CHOWN" not in env, "non-root runtime should not need chown bypass"
 
 def test_healthcheck_uses_strict_tls_with_mounted_ca():
     comp = _compose()
