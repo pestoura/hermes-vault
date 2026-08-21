@@ -6,6 +6,9 @@ services:
     cap_drop: ["ALL"]
     read_only: true
     security_opt: ["no-new-privileges"]
+    environment:
+      VAULT_ADDR: "https://127.0.0.1:8200"
+      VAULT_CACERT: "/vault/certs/ca.pem"
     volumes:
       - ./config/vault.hcl:/vault/config/vault.hcl:ro
       - vault-data:/vault/data
