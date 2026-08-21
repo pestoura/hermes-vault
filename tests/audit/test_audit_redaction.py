@@ -16,7 +16,11 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.hitl  # live assertions require a local HITL Vault
+# NOTE: HITL marking is per-test (see the two live-Vault tests below). A
+# module-level `pytestmark = pytest.mark.hitl` would deselect the 9 static
+# redaction/audit-path proofs under `-m 'not hitl'`, so they are NOT marked
+# here. Only test_audit_device_enabled and test_audit_redacts_secret_material
+# require a local operator-initialized Vault.
 
 _AUDIT_DIR = Path("deployments/vault/scripts")
 _ENABLE_AUDIT = _AUDIT_DIR / "enable-audit.sh"
@@ -95,6 +99,7 @@ def _live_env():
     return all(k in os.environ for k in ("VAULT_ADDR", "VAULT_CACERT", "VAULT_TOKEN"))
 
 
+@pytest.mark.hitl  # live assertions require a local HITL Vault
 @pytest.mark.skipif(
     not _live_env(),
     reason="C1 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT/VAULT_TOKEN); "
@@ -114,6 +119,7 @@ def test_audit_device_enabled():
     )
 
 
+@pytest.mark.hitl  # live assertions require a local HITL Vault
 @pytest.mark.skipif(
     not _live_env(),
     reason="C1 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT/VAULT_TOKEN); "
