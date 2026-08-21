@@ -209,7 +209,7 @@ AppRole SecretID, certificado, JWT ou outro bootstrap material não pode ser sim
 
 **Issuer:** o login por certificado recebe apenas a policy `vault-admin-issuer`. Essa policy pode exclusivamente efetuar `update` em `auth/token/create/hermes-vault-admin`; não recebe capacidades administrativas diretas.
 
-**JIT admin:** a token role `hermes-vault-admin` emite apenas policies administrativas explicitamente permitidas, com `orphan=true`, `renewable=false` (**non-renewable**), sem `default` policy e `token_explicit_max_ttl=10m`. O pedido deve selecionar apenas as classes necessárias à operação.
+**JIT admin:** a token role `hermes-vault-admin` emite apenas policies administrativas explicitamente permitidas, com `orphan=true`, `renewable=false` (**non-renewable**), sem `default` policy e `token_explicit_max_ttl=10m`. O pedido deve selecionar apenas as classes necessárias à operação. Como a exclusão da `default` policy remove também o lifecycle self-service normalmente herdado, cada classe JIT inclui explicitamente apenas `auth/token/revoke-self:update` para permitir a sua própria retirada; não se adiciona `sys/capabilities-self` como atalho de teste.
 
 **Audit-first:** o audit device é ativado e validado antes da instalação/uso da cadeia JIT. Exceções só existem em recovery/break-glass explicitamente autorizado.
 

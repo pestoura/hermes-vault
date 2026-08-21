@@ -110,41 +110,80 @@ ISSUER_TOKEN="$(
 export VAULT_TOKEN="${ISSUER_TOKEN}"
 ```
 
-Mint one JIT token with only the policy-administration class:
+The issuer deliberately has no `sys/capabilities-self`. Prove least privilege by attempting a real administrative read and requiring Vault to deny it:
 
 ```bash
-JIT_TOKEN="$(vaultc token create -field=token \
+if ISSUER_DENY="$(vaultc policy read vault-admin-policy 2>&1)"; then
+  echo 'ISSUER_NEGATIVE_FAILED' >&2
+  exit 1
+fi
+grep -Eq 'Code: 403|permission denied' <<<"${ISSUER_DENY}" || {
+  echo "${ISSUER_DENY}" >&2
+  exit 1
+}
+unset ISSUER_DENY
+echo 'ISSUER_NEGATIVE_PASS'
+```
+
+Mint one JIT token with only the policy-administration class. Validate its issuance metadata directly from the creation response so no `lookup-self` permission is required:
+
+```bash
+JIT_JSON="$(vaultc token create -format=json \
   -role=hermes-vault-admin \
   -policy=vault-admin-policy \
   -ttl=10m \
   -renewable=false \
   -no-default-policy)"
-unset ISSUER_TOKEN
+
+JIT_TOKEN="$(printf '%s' "${JIT_JSON}" | python3 -c '
+import json,sys
+x=json.load(sys.stdin)["auth"]
+policies=x.get("token_policies") or x.get("policies") or []
+assert policies == ["vault-admin-policy"], policies
+assert 0 < int(x["lease_duration"]) <= 600
+assert x["renewable"] is False
+assert x["orphan"] is True
+print(x["client_token"])
+')"
+
+unset JIT_JSON ISSUER_TOKEN
 export VAULT_TOKEN="${JIT_TOKEN}"
+echo 'JIT_METADATA_PASS'
 ```
 
-Positive capability must allow policy administration. Negative capability must be `deny` for audit administration because `vault-admin-audit` was not requested:
+Prove the requested class with a real permitted operation, and prove separation from the audit class with a real denied operation:
 
 ```bash
-vaultc token capabilities sys/policies/acl/adr022-proof
-vaultc token capabilities sys/audit/file
+vaultc policy list >/dev/null
+echo 'JIT_POSITIVE_PASS'
+
+if AUDIT_DENY="$(vaultc audit list 2>&1)"; then
+  echo 'JIT_NEGATIVE_FAILED' >&2
+  exit 1
+fi
+grep -Eq 'Code: 403|permission denied' <<<"${AUDIT_DENY}" || {
+  echo "${AUDIT_DENY}" >&2
+  exit 1
+}
+unset AUDIT_DENY
+echo 'JIT_NEGATIVE_PASS'
 ```
 
-Expected: first result includes `create`/`update`; second result is `deny`. Inspect safe token metadata and confirm orphan, non-renewable, TTL `<=600s`, and only `vault-admin-policy`:
-
-```bash
-vaultc token lookup
-```
-
-Self-revoke the JIT token and clear ephemeral variables:
+Every JIT class carries only the minimal self-retirement capability needed when the `default` policy is excluded. Self-revoke and prove the token can no longer perform its previously allowed operation:
 
 ```bash
 vaultc token revoke -self
-unset JIT_TOKEN
-unset VAULT_TOKEN
+
+if vaultc policy list >/dev/null 2>&1; then
+  echo 'JIT_REVOKE_VERIFY_FAILED' >&2
+  exit 1
+fi
+
+unset JIT_TOKEN VAULT_TOKEN
+echo 'ADR022_JIT_PROOF_PASS'
 ```
 
-If any positive, negative, TTL, orphan, policy or revoke condition fails: **stop; do not revoke root**.
+If any login, issuer-deny, issuance-metadata, positive, negative, or revoke condition fails: **stop; do not revoke root**.
 
 ### 6. Revoke initial root
 

@@ -174,18 +174,23 @@ def test_jit_runbook_never_places_root_or_jit_token_in_command_arguments():
     assert "curl" in text
     assert "--cert" in text and "--key" in text and "--cacert" in text
     assert "ISSUER_TOKEN=" in text and "JIT_TOKEN=" in text
-    assert "unset ISSUER_TOKEN" in text and "unset JIT_TOKEN" in text
+    assert "unset JIT_JSON ISSUER_TOKEN" in text
+    assert "unset JIT_TOKEN VAULT_TOKEN" in text
 
 
-def test_independent_jit_proof_requests_one_class_and_checks_positive_and_negative_capability():
+def test_independent_jit_proof_requests_one_class_and_checks_real_operations():
     text = _text(JIT_RUNBOOK)
     assert "-role=hermes-vault-admin" in text
     assert "-policy=vault-admin-policy" in text
     assert "-ttl=10m" in text
     assert "-renewable=false" in text
-    assert "sys/policies/acl/adr022-proof" in text
-    assert "sys/audit/file" in text
-    assert "deny" in text.lower()
+    assert "vaultc policy read vault-admin-policy" in text
+    assert "vaultc policy list" in text
+    assert "vaultc audit list" in text
+    assert "JIT_JSON=" in text
+    assert "lease_duration" in text
+    assert "orphan" in text and "renewable" in text
+    assert "Code: 403|permission denied" in text
 
 
 def test_canonical_spec_and_old_bootstrap_runbook_reference_adr022_order():
