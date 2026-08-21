@@ -79,12 +79,13 @@ def test_spec_status_matches_verified_unsealed_health_runtime_without_promoting_
     assert "repository-side implementation" in text.lower()
     assert "VERIFIED_UNSEALED_HEALTHY" in text
     assert "VERIFIED_ADR022_LIVE_ACCEPTED" in text
-    assert "ADR023_REPO_READY_LIVE_HITL_PENDING" in text
+    assert "VERIFIED_ADR023_LIVE_ACCEPTED" in text
     assert "VAULT_HEALTH_PASS" in text and "VAULT_UNSEALED" in text
     assert "HTTP 200" in text
     assert "sealed=false" in text
     assert "UNSEALED_READY" in text
-    assert "RESTORE_DRILL_PASS" in text and "NOT_RUN" in text
+    assert "RESTORE_DRILL_PASS" in text and "VERIFIED" in text
+    assert "first-consumer acceptance" in text and "NOT_RUN" in text
     assert "original design/spec change" in text.lower()
     assert "current implementation acceptance" in text.lower()
 
