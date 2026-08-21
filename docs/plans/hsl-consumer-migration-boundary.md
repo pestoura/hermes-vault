@@ -18,7 +18,7 @@ The former owner-decision block is now resolved:
 - **§25.4 / ADR-021 — recovery custody:** Shamir 3/2 with independent out-of-band custody; concrete custody locators are never recorded in GitHub, Hermes or Jarvas.
 - **§25.5 — image:** official pinned `hashicorp/vault:1.21.4` digest already defined by the baseline.
 
-The phrase **owner decision required** no longer applies to these structural choices. What remains owner/HITL gated is the live execution itself.
+The previous structural owner-decision gate is closed. What remains owner/HITL gated is the live execution itself.
 
 ## Current and target boundaries
 
