@@ -80,13 +80,19 @@ def test_snapshot_service_uses_user_scoped_encrypted_credentials_via_runtime_loa
     assert "ExecStart=%h/hermes-vault/deployments/vault/scripts/run-scheduled-snapshot.sh" in service
     assert "StateDirectory=hermes-vault-backups" in service
     assert "StateDirectoryMode=0700" in service
+    assert "RuntimeDirectory=hermes-vault-snapshot" in service
+    assert "RuntimeDirectoryMode=0700" in service
+    assert "VAULT_BACKUP_SECRET_BLOB=%h/.config/credstore.encrypted/hermes-vault-backup-secret-id" in service
+    assert "VAULT_SNAPSHOT_PASSPHRASE_BLOB=%h/.config/credstore.encrypted/hermes-vault-snapshot-passphrase" in service
     assert "ProtectSystem=full" in service
     assert "ProtectSystem=strict" not in service
     assert "Environment=VAULT_BACKUP_DIR=%h/.local/state/hermes-vault-backups" in service
     assert "systemd-creds --user --name=backup-secret-id decrypt" in loader
     assert "systemd-creds --user --name=snapshot-passphrase decrypt" in loader
-    assert "XDG_RUNTIME_DIR" in loader and "mktemp -d" in loader
-    assert "chmod 700" in loader and "trap cleanup EXIT" in loader
+    assert "RUNTIME_DIRECTORY" in loader and "mktemp -d" not in loader
+    assert "VAULT_BACKUP_SECRET_BLOB" in loader and "VAULT_SNAPSHOT_PASSPHRASE_BLOB" in loader
+    assert "${HOME}" not in loader and "XDG_RUNTIME_DIR" not in loader
+    assert ("chmod 700" in loader or "mkdir -m 700" in loader) and "trap cleanup EXIT" in loader
     assert "CREDENTIALS_DIRECTORY" in loader
     assert "OnCalendar=*-*-* 02:30:00" in timer
     assert "Persistent=true" in timer
