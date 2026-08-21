@@ -146,6 +146,12 @@ The first credential each workload uses to authenticate to Vault (AppRole Secret
 - Bootstrap of a consumer identity is performed by `hermes-vault` through a controlled, audited procedure; it is not "moving the secret to another file."
 - This spec performs **no** SecretID issuance, wrapping, or token operation.
 
+### 15.1 Administrative secret-zero — ADR-022
+
+Post-initialization administration uses an **audit-first certificate JIT** chain (ADR-022). Initial root is temporary bootstrap authority only: after audit is active, a dedicated self-signed ClientAuth leaf authenticates to `auth/cert` and receives only `vault-admin-issuer`. That issuer may create tokens solely against token role `hermes-vault-admin`; JIT tokens are orphaned, non-renewable, omit the default policy and have a hard 10-minute maximum TTL.
+
+The certificate secret key remains operator-only and outside Git, Hermes state, Context Core and prompts. Initial-root revocation is permitted only after an independent positive/negative capability proof succeeds with root absent from the active environment. This does not promote `UNSEALED_READY`: audit validation, JIT live acceptance, restore drill and consumer bootstrap remain separate live gates.
+
 ## 16. Lifecycle states and fail-closed behavior
 
 ### 16.1 Service lifecycle states
