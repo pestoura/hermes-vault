@@ -1,6 +1,6 @@
 # Hermes Shared Vault Service — Design Spec
 
-- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/start: `VERIFIED_PRE_INIT` on HermesJarvas (2026-08-21); Vault initialization: `VERIFIED_INITIALIZED_SEALED`; Vault unseal: `VERIFIED_UNSEALED_HEALTHY`. `VAULT_HEALTH_PASS` and `VAULT_UNSEALED` are VERIFIED.** Runtime verification observed `initialized=true`, `sealed=false`, Raft storage, Docker health `healthy`, and strict-TLS `/v1/sys/health` HTTP 200. Shamir remains `n=3`, threshold `t=2`; no share or root token is recorded here. **Audit enablement, administrative bootstrap, restore drill, consumer acceptance and production readiness remain `NOT_RUN`.** `UNSEALED_READY` is therefore not yet claimed.
+- **Status:** Approved design with repository-side implementation present and controlled runtime evidence on HermesJarvas (2026-08-21). Vault runtime is `VERIFIED_UNSEALED_HEALTHY`; `VAULT_HEALTH_PASS` and `VAULT_UNSEALED` are VERIFIED from strict-TLS HTTP 200 with `initialized=true` and `sealed=false`. ADR-022 is `VERIFIED_ADR022_LIVE_ACCEPTED` with audit PASS, certificate-JIT proof PASS, initial-root revocation PASS and post-revoke smoke PASS. ADR-023 repository implementation is `ADR023_REPO_READY_LIVE_HITL_PENDING`: hardened snapshot capture, synthetic acceptance staging, the disposable `network=none` restore harness and HITL runbook are ready. The real `RESTORE_DRILL_PASS`, first-consumer acceptance and production readiness remain `NOT_RUN`; `UNSEALED_READY` is therefore not yet claimed. Shamir remains `n=3`, threshold `t=2`; no share, token or private-key material is recorded here.
 - **Original design date:** 2026-08-18
 - **Structural decision update:** 2026-08-21
 - **Original design base SHA:** `fec7b5b0a63165a93f5b6e919959094cfced569a`
@@ -88,9 +88,13 @@ Deployment constraints:
 
 ## 10. Backup and recovery: snapshots + isolated restore drill before real use
 
-- Integrated Storage snapshots on a defined schedule, with an independent encrypted copy and checksum/metadata (ADR-012, `docs/09`).
+- Integrated Storage snapshots use strict loopback TLS capture, mandatory checksum metadata and an independently encrypted copy (ADR-012, ADR-023, `docs/09`).
 - **A restore drill in an isolated, non-production environment is mandatory before the service is declared production-ready or before any real consumer secret is migrated.**
-- Restore-drill acceptance (minimum): start isolated Vault; restore snapshot; validate storage/metadata; authenticate with a test identity; read a synthetic acceptance secret; assert cross-path policy deny; validate Transit metadata where applicable; tear down the test environment.
+- ADR-023 fixes the MVP restore model: exact pinned Vault image, Docker `network=none`, zero published ports, no production Vault volumes/networks, run-scoped disposable Raft/audit storage and synthetic-only acceptance fixtures.
+- Production JIT recovery may read a snapshot and manage only reserved synthetic fixtures; it never receives `snapshot-force`.
+- `snapshot-force` is executed only by the operator inside the labelled disposable container after temporary initialization. After restore, the instance is unsealed with the original Shamir quorum (2/3) as HITL; automation enters no original Shamir share.
+- Acceptance proves synthetic certificate login, primary KV read, explicit forbidden-path deny, Transit metadata read, token self-revoke, isolation and teardown. See `docs/runbooks/restore-drill.md`.
+- Repository state is `ADR023_REPO_READY_LIVE_HITL_PENDING`; `RESTORE_DRILL_PASS` remains `NOT_RUN` until the full operator sequence succeeds.
 - A backup without a passing restore drill is not considered validated recovery (ADR-012).
 
 ## 11. Per-consumer isolation
@@ -276,7 +280,7 @@ Live gates remain separate and may only be claimed after execution:
 
 ## 22. Original design/spec change invariants (historical)
 
-The following held for the **original design/spec change** only. They are preserved as provenance and are not claims about the current repository-side implementation. **Current implementation acceptance** is governed by §21.2 and the active implementation plan. Live Vault deployment/start, initialization and Shamir quorum unseal were separately executed and verified on HermesJarvas on 2026-08-21. `VAULT_HEALTH_PASS` and `VAULT_UNSEALED` are verified from strict-TLS HTTP 200 plus `initialized=true` / `sealed=false`. Audit enablement, administrative bootstrap, restore drill, consumer bootstrap and production promotion remain `NOT_RUN` until separately executed and evidenced.
+The following held for the **original design/spec change** only. They are preserved as provenance and are not claims about the current repository-side implementation. **Current implementation acceptance** is governed by §21.2 and the active implementation plan. Live Vault deployment/start, initialization and Shamir quorum unseal were separately executed and verified on HermesJarvas on 2026-08-21. `VAULT_HEALTH_PASS` and `VAULT_UNSEALED` are verified from strict-TLS HTTP 200 plus `initialized=true` / `sealed=false`. ADR-022 audit/JIT/root-retirement acceptance is separately evidenced as `VERIFIED_ADR022_LIVE_ACCEPTED`. ADR-023 repository recovery tooling is `ADR023_REPO_READY_LIVE_HITL_PENDING`; the real restore drill, consumer bootstrap and production promotion remain `NOT_RUN` until separately executed and evidenced.
 
 - No Vault runtime was installed, started, initialized, unsealed, or modified by the original spec change.
 - No root token, recovery key, Shamir share, SecretID, or token was created, read, printed, or transmitted.

@@ -267,6 +267,8 @@ ROTATION_RUNBOOKS_PASS
 
 ## Phase 11 — Assurance & recovery
 
+**Recovery implementation checkpoint:** `ADR023_REPO_READY_LIVE_HITL_PENDING`. O isolated restore drill harness está repository-ready (`network=none`, zero published ports, exact image digest, synthetic acceptance + teardown), mas o live HITL restore ainda não executou e `RESTORE_DRILL_PASS` permanece pendente.
+
 ### Entregáveis
 
 - `RB-VAULT-001` integrado no `jarvas-operations`;
@@ -274,7 +276,7 @@ ROTATION_RUNBOOKS_PASS
 - X.509 expiry;
 - lease cleanup;
 - snapshot assurance;
-- isolated restore drill;
+- isolated restore drill harness repository-ready; live restore HITL pending;
 - non-production failure/self-healing acceptance.
 
 ### Gate P11
