@@ -1,5 +1,5 @@
 # B1 architecture-compliance assertions (static only, no Vault runtime).
-# Mirrors spec §4, §5, §6, §7, §8, §19.2 and ADR-002/006/009/013.
+# Mirrors spec §4, §5, §6, §7, §8 and ADR-002/006/009/013/019.
 from pathlib import Path
 
 import re, yaml
@@ -50,6 +50,16 @@ def test_named_data_volume_not_host_bind():
     vols = comp["services"]["vault"].get("volumes", [])
     assert any(v == "vault-data:/vault/data" for v in vols), vols
     assert "vault-data" in comp.get("volumes", {}), comp.get("volumes")
+
+def test_healthcheck_uses_strict_tls_with_mounted_ca():
+    comp = _compose()
+    vault = comp["services"]["vault"]
+    env = vault.get("environment", {})
+    assert env.get("VAULT_ADDR") == "https://127.0.0.1:8200", env
+    assert env.get("VAULT_CACERT") == "/vault/certs/ca.pem", env
+    assert "VAULT_SKIP_VERIFY" not in env, "healthcheck must not bypass TLS verification"
+    health = vault.get("healthcheck", {}).get("test", [])
+    assert health == ["CMD", "vault", "status"], health
 
 def test_no_autounseal_and_no_enterprise_namespaces():
     hcl = _hcl()
