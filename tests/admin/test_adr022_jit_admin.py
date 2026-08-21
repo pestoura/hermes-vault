@@ -77,6 +77,9 @@ def test_jit_bootstrap_script_is_hitl_audit_gated_and_public_cert_only():
     assert "vault audit list" in src
     assert "AUDIT_REQUIRED" in src
     assert "vault auth list" in src and "vault auth enable cert" in src
+    assert "openssl x509" in src
+    assert "CA:TRUE" in src
+    assert "TLS Web Client Authentication" in src
     for forbidden in ("vault operator init", "vault operator unseal", "vault token revoke", "vault login", "client-key"):
         assert forbidden not in src
     assert "PRIVATE KEY" not in src
