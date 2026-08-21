@@ -35,3 +35,5 @@ jobs:
           if [ "$rc" -ne 0 ] && [ "$rc" -ne 5 ]; then
             echo "secret-zero failed (rc=$rc)"; exit "$rc"
           fi
+      - name: live-readiness-static
+        run: pytest tests/plans/test_live_readiness_decisions.py tests/baseline/test_compose_architecture.py tests/baseline/test_tls_material.py -q
