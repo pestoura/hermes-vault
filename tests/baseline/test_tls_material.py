@@ -6,8 +6,8 @@
 # private key or certificate secret material:
 #   * no *.key / *.pem / CA / server-cert secret material is committed to the repo;
 #   * the operator provisioning script exists, is POSIX-bash, references the
-#     git-ignored certs/ paths, and is operator-only/HITL (refuses unattended
-#     execution, never starts Vault or runs init/unseal);
+#     git-ignored certs/ paths, is operator-only/HITL, and refuses to overwrite
+#     any pre-existing TLS material;
 #   * SECURITY.md documents that TLS private material is operator-custodied out
 #     of the repo.
 import re
@@ -59,6 +59,23 @@ def test_provision_tls_script_is_operator_hitl_only():
     assert "vault operator init" not in src
     assert "operator unseal" not in src
     assert "vault server" not in src
+
+
+def test_provision_tls_script_fails_closed_on_existing_material():
+    """Static safety gate: unattended tests must never execute key generation.
+
+    The operator script must visibly check all persistent TLS outputs before the
+    first OpenSSL key-generation command and refuse rather than overwrite them.
+    """
+    src = _SCRIPT.read_text()
+    first_genrsa = src.index("openssl genrsa")
+    preflight = src[:first_genrsa]
+    for var in ("CA_KEY", "CA_CERT", "SERVER_KEY", "SERVER_CERT"):
+        assert re.search(rf'-e\s+"\${{{var}}}"', preflight), (
+            f"script must test existing ${var} before key generation"
+        )
+    assert "refus" in preflight.lower() or "already exist" in preflight.lower()
+    assert "VAULT_TLS_FORCE" not in src, "MVP must not provide an overwrite bypass"
 
 
 def test_security_md_documents_tls_private_material_out_of_repo():
