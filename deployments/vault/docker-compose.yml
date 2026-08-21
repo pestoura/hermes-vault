@@ -6,13 +6,20 @@ services:
     cap_drop: ["ALL"]
     read_only: true
     security_opt: ["no-new-privileges"]
+    environment:
+      VAULT_ADDR: "https://127.0.0.1:8200"
+      VAULT_CACERT: "/vault/certs/ca.pem"
     volumes:
       - ./config/vault.hcl:/vault/config/vault.hcl:ro
       - vault-data:/vault/data
       - vault-audit:/vault/logs
       - ./certs:/vault/certs:ro   # TLS material mounted read-only; private key HITL (see B3)
     ports:
-      - "127.0.0.1:8200:8200"     # loopback/container-network TLS only (spec §5, §19.2)
+      - "127.0.0.1:8200:8200"     # loopback operator access only; never LAN/Internet
+    networks:
+      hermes-security-plane:
+        aliases:
+          - hermes-vault
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 10s
@@ -21,3 +28,7 @@ services:
 volumes:
   vault-data:
   vault-audit:
+networks:
+  hermes-security-plane:
+    name: hermes-security-plane
+    internal: true
