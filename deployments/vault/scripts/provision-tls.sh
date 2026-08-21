@@ -18,6 +18,9 @@
 # steps (see B4). It MUST be executed by a human operator out-of-band, never by
 # CI or unattended tasks. Recovery of TLS material is an operator responsibility.
 #
+# Fail-closed overwrite rule: existing CA/server key or certificate material is
+# never replaced. Rotation/replacement requires a separate reviewed procedure.
+#
 # Pre-flight: the `openssl` CLI must be installed on the operator host.
 set -euo pipefail
 
@@ -49,6 +52,16 @@ CN="${VAULT_TLS_CN:-hermes-vault}"
 command -v openssl >/dev/null 2>&1 || { echo "openssl is required" >&2; exit 1; }
 
 mkdir -p "$OUTDIR"
+
+# Safety pre-flight: never overwrite persistent TLS material. A partially
+# provisioned directory is treated as operator-recovery state and must be
+# inspected/recovered explicitly rather than repaired automatically.
+if [[ -e "${CA_KEY}" || -e "${CA_CERT}" || -e "${SERVER_KEY}" || -e "${SERVER_CERT}" ]]; then
+  echo "HITL REFUSES: TLS material already exists under ${OUTDIR}." >&2
+  echo "No file was overwritten. Use a separately reviewed rotation/recovery procedure." >&2
+  exit 1
+fi
+
 # CSR and extension config are transient. Remove them even if OpenSSL fails.
 trap 'rm -f "$SERVER_CSR" "$EXTFILE"' EXIT
 
