@@ -17,3 +17,6 @@ backups/
 
 # scratch task reports (gitignored, never commit)
 .scratch-task-*.md
+
+# project-local git worktrees (never track linked worktree contents)
+.worktrees/

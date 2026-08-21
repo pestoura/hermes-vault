@@ -54,13 +54,14 @@ cat "${POLICY_DIR}/vault-admin-auth.hcl" | vault policy write vault-admin-auth -
 cat "${POLICY_DIR}/vault-admin-token.hcl" | vault policy write vault-admin-token -
 cat "${POLICY_DIR}/vault-admin-secrets-engine.hcl" | vault policy write vault-admin-secrets-engine -
 cat "${POLICY_DIR}/vault-admin-audit.hcl" | vault policy write vault-admin-audit -
+cat "${POLICY_DIR}/vault-admin-recovery.hcl" | vault policy write vault-admin-recovery -
 
 if ! vault auth list -format=json | grep -q '"cert/"'; then
   vault auth enable cert
 fi
 
 vault write auth/token/roles/hermes-vault-admin \
-  allowed_policies=vault-admin-policy,vault-admin-auth,vault-admin-token,vault-admin-secrets-engine,vault-admin-audit \
+  allowed_policies=vault-admin-policy,vault-admin-auth,vault-admin-token,vault-admin-secrets-engine,vault-admin-audit,vault-admin-recovery \
   disallowed_policies=default,root \
   orphan=true \
   renewable=false \
