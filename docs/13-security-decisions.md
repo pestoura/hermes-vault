@@ -216,3 +216,22 @@ AppRole SecretID, certificado, JWT ou outro bootstrap material não pode ser sim
 **Root:** o initial root token permanece exclusivamente out-of-band durante o bootstrap e é revogado apenas depois de uma prova independente demonstrar: login por certificado, emissão de JIT token, capability positiva esperada, negative capability fora do scope e revogação do JIT token.
 
 **Motivo:** remover root da operação normal sem substituir um segredo privilegiado permanente por outro, preservar least privilege e produzir trilho de auditoria desde o início da administração pós-bootstrap.
+
+
+---
+
+## ADR-023 — Restore drill Raft em container totalmente isolado
+
+**Decisão:** executar o restore drill obrigatório da ADR-012 segundo a Opção A aprovada em 2026-08-21: um único Vault descartável com `network=none`, zero ports publicados, imagem exact-digest, storage/audit efémeros e TLS sintético de loopback. O Vault principal nunca é alvo de restore nem é ligado ao ambiente do drill.
+
+**Boundary production recovery:** a classe JIT `vault-admin-recovery` pode apenas preparar fixtures sintéticas em paths `restore-acceptance-*` e efetuar leitura de `sys/storage/raft/snapshot`. É expressamente proibido conceder-lhe `sys/storage/raft/snapshot-force`, restore ou acesso a paths de consumidores.
+
+**Restore:** `snapshot-force` é executado exclusivamente dentro do container descartável e apenas com o initial root temporário desse container. A operação de init temporário, root temporário e qualquer Shamir share é HITL e permanece fora de Git, Hermes, Context Core, logs e prompts.
+
+**Unseal após restore:** como o snapshot pertence ao cluster original, o unseal do estado restaurado usa o quorum Shamir original 2/3, introduzido interativamente pelos custodians/operator. A automação nunca recebe essas shares.
+
+**Aceitação:** o snapshot inclui uma identidade/certificado sintético descartável e fixtures KV/Transit reservadas. Após o unseal, o harness prova autenticação, leitura positiva, deny cross-path, metadata Transit e self-revoke; depois destrói o runtime e as private keys sintéticas.
+
+**Gate:** só a sequência live completa pode produzir `RESTORE_DRILL_PASS`. O self-test offline ou a existência do harness nunca promovem `UNSEALED_READY`.
+
+**Motivo:** validar recuperação real sem criar um caminho de restore privilegiado sobre produção e sem permitir comunicação entre o ambiente restaurado e qualquer sistema real.

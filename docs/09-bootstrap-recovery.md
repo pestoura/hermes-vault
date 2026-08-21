@@ -121,6 +121,14 @@ Acceptance mínimo:
 
 Não copiar recovery/root material real para pipelines ou GitHub Actions.
 
+### ADR-023 — execução isolada
+
+O restore drill canónico usa o harness `docs/runbooks/restore-drill.md`. O container de teste corre com `network=none`, zero portas publicadas, imagem Vault pinned e sem volumes/redes do Vault de produção.
+
+O repositório pode preparar snapshot cifrado/checksummed, fixtures sintéticos, runtime isolado, status, acceptance e teardown. A inicialização temporária, o `snapshot-force` e o unseal pós-restore com as **original Shamir shares** são HITL operator-only. Nenhuma share, root/token ou localização de custódia é entregue à automação.
+
+Estado repository-side: `ADR023_REPO_READY_LIVE_HITL_PENDING`. `RESTORE_DRILL_PASS` permanece `NOT_RUN` até uma execução real completar force-restore, quorum original, acceptance e teardown no mesmo run.
+
 ## Disaster scenarios
 
 ### Vault process down
