@@ -90,7 +90,8 @@ def test_jit_bootstrap_applies_all_policy_classes_and_issuer_cert_role():
     for policy in ("vault-admin-issuer", *ADMIN_POLICIES.keys()):
         assert f"vault policy write {policy}" in src
     assert "auth/cert/certs/vault-admin-issuer" in src
-    assert "certificate=@${VAULT_ADMIN_CERT_PEM}" in src
+    assert "certificate=-" in src
+    assert 'cat "${VAULT_ADMIN_CERT_PEM}" | vault write' in src
     assert "token_policies=vault-admin-issuer" in src
     assert "token_no_default_policy=true" in src
     assert "token_explicit_max_ttl=5m" in src
@@ -117,3 +118,19 @@ def test_bootstrap_checklist_moves_audit_before_jit_admin_and_root_revoke():
     assert "jit" in low and "cert" in low
     assert "revoke initial root" in low
     assert low.index("enable audit") < low.index("jit") < low.index("revoke initial root")
+
+
+ENABLE_AUDIT = Path("deployments/vault/scripts/enable-audit.sh")
+
+def test_operator_scripts_use_container_pinned_vault_cli_not_missing_host_cli():
+    for path in (SCRIPT, ENABLE_AUDIT):
+        src = _text(path)
+        assert "docker compose" in src
+        assert "exec -T -e VAULT_TOKEN vault vault" in src
+        assert "command -v vault" not in src
+
+def test_jit_bootstrap_streams_host_policy_files_to_container_cli():
+    src = _text(SCRIPT)
+    for policy in ("vault-admin-issuer", *ADMIN_POLICIES.keys()):
+        assert f"vault policy write {policy} -" in src
+        assert f"{policy}.hcl" in src
