@@ -26,7 +26,9 @@ def _active_paths(text: str) -> list[str]:
 def test_adr022_records_audit_first_cert_issuer_jit_admin_and_root_revoke_order():
     text = _text(ADR)
     assert "ADR-022" in text
-    low = text.lower()
+    section = text.split("## ADR-022", 1)[1]
+    section = section.split("\n## ADR-", 1)[0] if "\n## ADR-" in section else section
+    low = section.lower()
     for marker in ("audit", "cert", "vault-admin-issuer", "hermes-vault-admin", "root"):
         assert marker in low
     assert low.index("audit") < low.index("vault-admin-issuer") < low.rindex("root")
