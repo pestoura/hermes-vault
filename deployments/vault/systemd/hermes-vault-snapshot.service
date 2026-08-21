@@ -15,4 +15,5 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=%h/.local/state/hermes-vault
+StateDirectory=hermes-vault
+StateDirectoryMode=0700
