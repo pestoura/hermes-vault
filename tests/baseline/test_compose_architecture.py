@@ -1,5 +1,5 @@
 # B1 architecture-compliance assertions (static only, no Vault runtime).
-# Mirrors spec §4, §5, §6, §7, §8 and ADR-002/006/009/013/019.
+# Mirrors spec §4, §5, §6, §7, §8 and ADR-002/006/009/013/019/019A.
 from pathlib import Path
 
 import re, yaml
@@ -46,6 +46,25 @@ def test_ports_loopback_only():
     ports = comp["services"]["vault"].get("ports", [])
     assert ports == ["127.0.0.1:8200:8200"], ports
     assert all("8201" not in p for p in ports), "cluster port must stay Docker-internal"
+
+def test_dual_network_separates_consumer_plane_from_local_admin_path():
+    comp = _compose()
+    vault_networks = comp["services"]["vault"].get("networks", {})
+    assert set(vault_networks) == {"hermes-security-plane", "hermes-vault-admin"}, vault_networks
+
+    security_plane = comp["networks"]["hermes-security-plane"]
+    assert security_plane.get("name") == "hermes-security-plane"
+    assert security_plane.get("internal") is True, security_plane
+    assert vault_networks["hermes-security-plane"].get("aliases") == ["hermes-vault"]
+
+    admin = comp["networks"]["hermes-vault-admin"]
+    assert admin.get("name") == "hermes-vault-admin"
+    assert admin.get("driver") == "bridge"
+    assert admin.get("internal") is False, admin
+    assert admin.get("driver_opts", {}).get("com.docker.network.bridge.enable_ip_masquerade") == "false", admin
+    assert vault_networks["hermes-vault-admin"] in ({}, None), (
+        "admin network must not carry the consumer-facing hermes-vault alias"
+    )
 
 def test_named_data_volume_uses_official_vault_writable_path():
     comp = _compose()

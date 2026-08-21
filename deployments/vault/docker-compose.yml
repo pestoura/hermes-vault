@@ -21,6 +21,7 @@ services:
       hermes-security-plane:
         aliases:
           - hermes-vault
+      hermes-vault-admin: {}
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 10s
@@ -33,3 +34,9 @@ networks:
   hermes-security-plane:
     name: hermes-security-plane
     internal: true
+  hermes-vault-admin:
+    name: hermes-vault-admin
+    driver: bridge
+    internal: false
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"

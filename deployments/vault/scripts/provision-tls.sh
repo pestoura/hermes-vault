@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # provision-tls.sh — Operator-only (HITL) local TLS provisioning for the
-# Hermes Vault listener (Task B3, spec §7, ADR-019).
+# Hermes Vault listener (Task B3, spec §7, ADR-019/019A).
 #
 # Generates a self-signed CA and a server certificate into the git-ignored
 # deployments/vault/certs/ directory. The private key material produced here is
