@@ -1,6 +1,5 @@
 services:
   vault:
-    build: .
     image: hashicorp/vault:1.21.4@sha256:4e33b126a59c0c333b76fb4e894722462659a6bec7c48c9ee8cea56fccfd2569
     command: server
     cap_drop: ["ALL"]
@@ -9,9 +8,11 @@ services:
     environment:
       VAULT_ADDR: "https://127.0.0.1:8200"
       VAULT_CACERT: "/vault/certs/ca.pem"
+      SKIP_SETCAP: "1"
+      SKIP_CHOWN: "1"
     volumes:
       - ./config/vault.hcl:/vault/config/vault.hcl:ro
-      - vault-data:/vault/data
+      - vault-data:/vault/file
       - vault-audit:/vault/logs
       - ./certs:/vault/certs:ro   # TLS material mounted read-only; private key HITL (see B3)
     ports:
