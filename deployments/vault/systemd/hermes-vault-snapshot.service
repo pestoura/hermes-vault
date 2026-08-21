@@ -8,6 +8,8 @@ Environment=VAULT_ADDR=https://127.0.0.1:8200
 Environment=VAULT_CACERT=%h/hermes-vault/deployments/vault/certs/ca.pem
 Environment=VAULT_BACKUP_DIR=%h/.local/state/hermes-vault-backups
 Environment=VAULT_SNAPSHOT_RETENTION=14
+Environment=VAULT_BACKUP_SECRET_BLOB=%h/.config/credstore.encrypted/hermes-vault-backup-secret-id
+Environment=VAULT_SNAPSHOT_PASSPHRASE_BLOB=%h/.config/credstore.encrypted/hermes-vault-snapshot-passphrase
 EnvironmentFile=%h/.config/hermes-vault/backup.env
 ExecStart=%h/hermes-vault/deployments/vault/scripts/run-scheduled-snapshot.sh
 UMask=0077
@@ -17,3 +19,5 @@ ProtectSystem=full
 ProtectHome=read-only
 StateDirectory=hermes-vault-backups
 StateDirectoryMode=0700
+RuntimeDirectory=hermes-vault-snapshot
+RuntimeDirectoryMode=0700

@@ -4,29 +4,29 @@ set -euo pipefail
 umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUNTIME_BASE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-SECRET_BLOB="${HOME}/.config/credstore.encrypted/hermes-vault-backup-secret-id"
-PASSPHRASE_BLOB="${HOME}/.config/credstore.encrypted/hermes-vault-snapshot-passphrase"
+: "${RUNTIME_DIRECTORY:?systemd RuntimeDirectory is required}"
+: "${VAULT_BACKUP_SECRET_BLOB:?encrypted backup SecretID path is required}"
+: "${VAULT_SNAPSHOT_PASSPHRASE_BLOB:?encrypted snapshot passphrase path is required}"
 
-[[ -d "${RUNTIME_BASE}" ]] || {
+[[ -d "${RUNTIME_DIRECTORY}" ]] || {
   echo "SCHEDULED_SNAPSHOT_FAIL reason=runtime_dir_missing" >&2
   exit 3
 }
-[[ -r "${SECRET_BLOB}" && -r "${PASSPHRASE_BLOB}" ]] || {
+[[ -r "${VAULT_BACKUP_SECRET_BLOB}" && -r "${VAULT_SNAPSHOT_PASSPHRASE_BLOB}" ]] || {
   echo "SCHEDULED_SNAPSHOT_FAIL reason=encrypted_credentials_missing" >&2
   exit 3
 }
 
-RUNTIME_CREDS="$(mktemp -d "${RUNTIME_BASE}/hermes-vault-snapshot.XXXXXX")"
-chmod 700 "${RUNTIME_CREDS}"
+RUNTIME_CREDS="${RUNTIME_DIRECTORY}/credentials"
+mkdir -m 700 "${RUNTIME_CREDS}"
 cleanup() {
   rm -rf -- "${RUNTIME_CREDS}"
 }
 trap cleanup EXIT
 systemd-creds --user --name=backup-secret-id decrypt \
-  "${SECRET_BLOB}" "${RUNTIME_CREDS}/backup-secret-id" >/dev/null
+  "${VAULT_BACKUP_SECRET_BLOB}" "${RUNTIME_CREDS}/backup-secret-id" >/dev/null
 systemd-creds --user --name=snapshot-passphrase decrypt \
-  "${PASSPHRASE_BLOB}" "${RUNTIME_CREDS}/snapshot-passphrase" >/dev/null
+  "${VAULT_SNAPSHOT_PASSPHRASE_BLOB}" "${RUNTIME_CREDS}/snapshot-passphrase" >/dev/null
 chmod 600 "${RUNTIME_CREDS}/backup-secret-id" "${RUNTIME_CREDS}/snapshot-passphrase"
 
 export CREDENTIALS_DIRECTORY="${RUNTIME_CREDS}"
