@@ -158,6 +158,25 @@ AppRole SecretID, certificado, JWT ou outro bootstrap material não pode ser sim
 
 ---
 
+## ADR-019A — Topologia dual-network para administração local
+
+**Contexto:** a verificação live pré-init no HermesJarvas confirmou que, com o Vault ligado apenas à rede Docker `hermes-security-plane` marcada `internal: true`, o Docker preserva a declaração `127.0.0.1:8200:8200` no HostConfig mas não materializa conectividade útil no loopback do host. O listener TLS dentro do contentor continuava operacional e o problema estava na fronteira de rede.
+
+**Decisão:** o Vault liga-se simultaneamente a duas redes com funções estritamente separadas:
+
+- `hermes-security-plane`: continua `internal: true`, mantém o alias `hermes-vault` e é a única rede permitida para consumidores;
+- `hermes-vault-admin`: bridge administrativa dedicada, não interna apenas para permitir a publicação local `127.0.0.1:8200:8200`; não recebe o alias de consumidor, não é usada por workloads e tem IP masquerade desativado.
+
+**Exposição:** continua proibida qualquer publicação em `0.0.0.0`, endereço LAN, Internet, ingress, reverse proxy ou host networking. A porta Raft/cluster `8201` nunca é publicada no host.
+
+**Limite de confiança:** `hermes-vault-admin` não é uma rede de egress nem uma nova security plane. A ausência de masquerade reduz a capacidade de saída normal, mas não substitui controlos de host/firewall; consumidores não devem aderir a esta rede.
+
+**Motivo:** preservar simultaneamente o isolamento forte da rede de consumidores e o endpoint administrativo local definido na ADR-019, adaptando o mecanismo ao comportamento Docker observado no Jarvas.
+
+**Estado:** **Decisão — APROVADA em 2026-08-21**, após validação runtime pré-init.
+
+---
+
 ## ADR-020 — Parallel-run controlado para cutover HSL
 
 **Decisão:** a migração HSL usa **parallel-run controlado**. Enquanto o novo shared Vault está em aceitação, o caminho legado mantém o estado pré-cutover. Depois de todas as gates live obrigatórias passarem, o shared Vault torna-se a única autoridade para assinar **new evidence / nova evidência**, e o Vault HSL legado passa a **verify-only**.

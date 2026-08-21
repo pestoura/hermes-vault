@@ -56,7 +56,7 @@ Deployment constraints:
 - Official `hashicorp/vault` image, pinned by digest.
 - Container runs with `read_only` root filesystem, `cap_drop: ALL`, `no-new-privileges`.
 - Vault data persisted on a dedicated Docker volume with restricted ownership; not on a shared or world-readable path.
-- Network exposure is resolved by ADR-019: host publication is exactly `127.0.0.1:8200:8200`; authorised container consumers use TLS on the Docker-internal `hermes-security-plane` network through alias `hermes-vault`; no LAN/Internet publication is part of the MVP.
+- Network exposure is resolved by ADR-019 and refined by ADR-019A: host publication remains exactly `127.0.0.1:8200:8200`; authorised container consumers use TLS only on the Docker-internal `hermes-security-plane` network through alias `hermes-vault`; a separate `hermes-vault-admin` bridge exists only to make that loopback administration path functional on Docker, carries no consumer alias, and has IP masquerade disabled. No LAN/Internet publication is part of the MVP.
 - Healthcheck and controlled restart procedure owned by `hermes-vault`.
 
 ## 6. Storage: single-node Integrated Storage / Raft
@@ -305,7 +305,7 @@ The original questions are preserved below for auditability. **This resolution r
    - **RESOLVED 2026-08-21 — ADR-018:** retain the legacy HSL Vault/key path strictly **verify-only** during the continuity window. After cutover, no new signature is created with `hermes-lab-l1-signer`. Historical evidence is not bulk re-signed; original signatures remain the provenance anchor.
 
 2. **Network exposure model.** The original design assumed loopback/container-network TLS but left exact bind/connectivity undecided.
-   - **RESOLVED 2026-08-21 — ADR-019:** host publication remains exactly `127.0.0.1:8200:8200`; consumer connectivity uses the Docker-internal shared network `hermes-security-plane` with `internal: true` and Vault DNS alias `hermes-vault`. No LAN/Internet publication, host networking, ingress or reverse proxy is introduced in the MVP.
+   - **RESOLVED 2026-08-21 — ADR-019 + ADR-019A:** host publication remains exactly `127.0.0.1:8200:8200`; consumer connectivity uses only the Docker-internal shared network `hermes-security-plane` with `internal: true` and Vault DNS alias `hermes-vault`. A second bridge, `hermes-vault-admin`, is reserved for local host administration so Docker can materialize the loopback bind; it has no consumer alias and IP masquerade is disabled. Port `8201` remains Docker-internal and no LAN/Internet publication, host networking, ingress or reverse proxy is introduced in the MVP.
 
 3. **HSL deployment cutover vs parallel-run.** The original decision was whether `deployment/vault-lab-l1` should be decommissioned, kept read-only, or run in parallel.
    - **RESOLVED 2026-08-21 — ADR-020:** use a controlled **parallel-run**. The shared Vault is tested without becoming authoritative; after all acceptance gates pass, it becomes the sole signer for new evidence and the legacy deployment becomes verify-only. Retirement occurs only after the continuity/retention gate.
