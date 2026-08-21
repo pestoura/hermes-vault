@@ -5,9 +5,8 @@
 # Validates, WITHOUT generating / reading / copying / inspecting any real TLS
 # private key or certificate secret material:
 #   * no *.key / *.pem / CA / server-cert secret material is committed to the repo;
-#   * the operator provisioning script exists, is POSIX-bash, references the
-#     git-ignored certs/ paths, is operator-only/HITL, and refuses to overwrite
-#     any pre-existing TLS material;
+#   * the operator provisioning script exists, is operator-only/HITL, refuses to
+#     overwrite pre-existing TLS material, and assigns runtime-safe permissions;
 #   * SECURITY.md documents that TLS private material is operator-custodied out
 #     of the repo.
 import re
@@ -25,7 +24,6 @@ _CERT_PATHS = (
 )
 
 
-# --- from the approved task brief (Step 1) -----------------------------------
 def test_tls_private_key_not_in_repo():
     bad = list(_VAULT_DIR.rglob("*.key"))
     assert bad == [], f"private key committed: {bad}"
@@ -35,7 +33,6 @@ def test_provision_script_writes_gitignored_certs():
     assert "certs/" in _GITIGNORE.read_text()
 
 
-# --- B3 artifact existence / RED drivers -------------------------------------
 def test_provision_tls_script_exists():
     assert _SCRIPT.is_file(), f"missing operator TLS provisioning script: {_SCRIPT}"
 
@@ -49,24 +46,17 @@ def test_provision_tls_script_references_certs_and_openssl():
 
 def test_provision_tls_script_is_operator_hitl_only():
     src = _SCRIPT.read_text()
-    # HITL refusal: must NOT run unattended / must require operator acknowledgement.
     assert (
         "VAULT_TLS_OPERATOR_ACK" in src
         or "operator-only" in src.lower()
         or "hitl" in src.lower()
     ), "script must encode an operator-only (HITL) acknowledgement guard"
-    # Must never start Vault or perform init/unseal (those are operator steps too).
     assert "vault operator init" not in src
     assert "operator unseal" not in src
     assert "vault server" not in src
 
 
 def test_provision_tls_script_fails_closed_on_existing_material():
-    """Static safety gate: unattended tests must never execute key generation.
-
-    The operator script must visibly check all persistent TLS outputs before the
-    first OpenSSL key-generation command and refuse rather than overwrite them.
-    """
     src = _SCRIPT.read_text()
     first_genrsa = src.index("openssl genrsa")
     preflight = src[:first_genrsa]
@@ -76,6 +66,19 @@ def test_provision_tls_script_fails_closed_on_existing_material():
         )
     assert "refus" in preflight.lower() or "already exist" in preflight.lower()
     assert "VAULT_TLS_FORCE" not in src, "MVP must not provide an overwrite bypass"
+
+
+def test_server_key_is_group_readable_but_ca_key_remains_operator_only():
+    src = _SCRIPT.read_text()
+    assert re.search(r'chmod\s+640\s+"\$SERVER_KEY"', src), (
+        "server TLS key must be readable by pinned Vault runtime gid 1000"
+    )
+    assert re.search(r'chmod\s+600\s+"\$CA_KEY"', src), (
+        "CA private key must remain operator-only"
+    )
+    assert re.search(r'chgrp\s+1000\s+"\$SERVER_KEY"', src), (
+        "server TLS key group must match pinned Vault runtime gid 1000"
+    )
 
 
 def test_security_md_documents_tls_private_material_out_of_repo():
@@ -96,7 +99,6 @@ def test_no_secret_material_in_deployment_sources():
         if not f.is_file():
             continue
         if f.suffix in (".key", ".pem") or "certs/" in str(f):
-            # generated secret material is git-ignored and must not exist in repo
             hits.append(f"unexpected secret file in repo: {f}")
             continue
         try:

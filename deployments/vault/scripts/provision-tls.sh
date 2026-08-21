@@ -82,8 +82,11 @@ openssl x509 -req -in "$SERVER_CSR" -CA "$CA_CERT" -CAkey "$CA_KEY" \
   -CAcreateserial -sha256 -days "$DAYS" -extfile "$EXTFILE" -out "$SERVER_CERT"
 rm -f "$OUTDIR/ca.srl"
 
-# Private key material is operator custody: restrict perms, never echo contents.
-chmod 600 "$SERVER_KEY" "$CA_KEY"
+# CA key remains operator-only. The server key is group-readable only by the
+# pinned Vault runtime group (gid 1000) so uid 100 can read it from the RO mount.
+chgrp 1000 "$SERVER_KEY"
+chmod 640 "$SERVER_KEY"
+chmod 600 "$CA_KEY"
 
 echo "TLS material provisioned under ${OUTDIR} (git-ignored, operator custody)."
 echo "Server certificate SAN contract: hermes-vault, localhost, 127.0.0.1."
