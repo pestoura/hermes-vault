@@ -1,56 +1,60 @@
 # Hermes Vault — documentation index
 
-**Repository status:** architecture/implementation blueprint; no production Vault deployment is claimed.
+**Repository status:** `VAULT_CORE_OPERATIONAL=VERIFIED`. The shared Vault core is DEPLOYED and live-accepted; consumer production enablement remains separately gated.
 
-## Canonical reading path
+## Start here
 
 | Order | Document | Purpose |
 |---:|---|---|
-| 1 | `00-context-goals.md` | Scope, goals and non-goals |
-| 2 | `01-reference-architecture.md` | Target architecture and trust boundaries |
-| 3 | `02-vault-capabilities.md` | Candidate Vault capability catalogue |
-| 4 | `03-identity-auth-policy.md` | Identity, auth methods, policies and least privilege |
-| 5 | `04-hermes-integration.md` | Credential Broker / Hermes integration design |
-| 6 | `05-jit-privilege.md` | JIT privilege elevation model |
-| 7 | `06-pki-mtls.md` | PKI and mTLS target design |
-| 8 | `07-transit-evidence.md` | Transit/signing/HMAC and cryptographic evidence |
-| 9 | `08-audit-observability.md` | Audit and monitoring model |
-| 10 | `09-bootstrap-recovery.md` | Bootstrap, seal/unseal, recovery and break-glass |
-| 11 | `10-operations-runbooks.md` | Planned operating procedures |
-| 12 | `11-migration-plan.md` | Migration strategy for existing credentials |
-| 13 | `12-implementation-roadmap.md` | Delivery phases, gates and acceptance |
-| 14 | `13-security-decisions.md` | Security decisions/constraints |
-| 15 | `14-references.md` | External authoritative references |
-| 16 | `15-delivery-operating-model.md` | Delivery/wave operating model |
-| 17 | `15-threat-model.md` | Threat model |
+| 1 | [`16-current-runtime-status.md`](16-current-runtime-status.md) | Canonical current runtime truth and open gates |
+| 2 | [`../README.md`](../README.md) | Product/runtime overview and diagrams |
+| 3 | [`01-reference-architecture.md`](01-reference-architecture.md) | Architecture and trust boundaries |
+| 4 | [`03-identity-auth-policy.md`](03-identity-auth-policy.md) | Identity, auth and policy model |
+| 5 | [`09-bootstrap-recovery.md`](09-bootstrap-recovery.md) | Shamir, bootstrap and recovery |
+| 6 | [`runbooks/scheduled-snapshot.md`](runbooks/scheduled-snapshot.md) | Daily encrypted Raft snapshots |
+| 7 | [`runbooks/restore-drill.md`](runbooks/restore-drill.md) | Isolated restore drill |
+| 8 | [`runbooks/jit-admin-bootstrap.md`](runbooks/jit-admin-bootstrap.md) | Certificate JIT administration |
+| 9 | [`13-security-decisions.md`](13-security-decisions.md) | Accepted security decisions / ADRs |
+| 10 | [`../IMPLEMENTATION-CHECKLIST.md`](../IMPLEMENTATION-CHECKLIST.md) | Completed and remaining capabilities |
+| 11 | [`../RESUME.md`](../RESUME.md) | Safe continuation checkpoint |
 
-## Implementation entry points
+## Current state vocabulary
 
-- [`../RESUME.md`](../RESUME.md) — how a future session should resume safely.
-- [`../IMPLEMENTATION-CHECKLIST.md`](../IMPLEMENTATION-CHECKLIST.md) — operational checklist for implementation progress.
+- **DESIGNED** — accepted architecture/contract exists.
+- **IMPLEMENTED** — repository-side runtime/configuration exists.
+- **DEPLOYED** — live runtime is installed/running.
+- **VERIFIED** — executable acceptance evidence passed.
+- **PRODUCTION_ENABLED** — capability is actively enabled for an intended consumer.
 
-## Evidence / status rules
+The core service is DEPLOYED + VERIFIED. HSL first-consumer enablement is still `NOT_RUN`, so it is not yet `PRODUCTION_ENABLED` for that consumer.
 
-The documentation uses the following distinction:
+## Architecture and design set
 
-- **DESIGNED** — architecture/contract exists in docs;
-- **IMPLEMENTED** — corresponding runtime/configuration exists;
-- **TESTED** — executable acceptance evidence exists;
-- **DEPLOYED** — runtime deployment evidence exists;
-- **PRODUCTION_ENABLED** — the capability is explicitly active in the intended environment.
+| Document | Scope |
+|---|---|
+| `00-context-goals.md` | scope, goals and non-goals |
+| `01-reference-architecture.md` | reference architecture |
+| `02-vault-capabilities.md` | capability catalogue |
+| `03-identity-auth-policy.md` | identities, auth methods and least privilege |
+| `04-hermes-integration.md` | Hermes/Credential Broker integration design |
+| `05-jit-privilege.md` | JIT privilege model |
+| `06-pki-mtls.md` | future PKI/mTLS design |
+| `07-transit-evidence.md` | Transit/signing/HMAC model |
+| `08-audit-observability.md` | audit and observability |
+| `10-operations-runbooks.md` | operating procedures catalogue |
+| `11-migration-plan.md` | progressive consumer/secret migration |
+| `12-implementation-roadmap.md` | phased delivery and gates |
+| `14-references.md` | authoritative references |
+| `15-delivery-operating-model.md` | delivery operating model |
+| `15-threat-model.md` | threat model |
 
-At the time of this review, the repository is primarily **DESIGNED**. Do not infer later states from design completeness.
+## Evidence hierarchy
 
-## Truth hierarchy during implementation
+When sources disagree, use this order:
 
-When implementation begins, use this order if sources disagree:
-
-1. current read-only observation of the real Jarvas/Hermes environment;
-2. current accepted security decisions in this repository;
-3. official HashiCorp documentation for the selected Vault version/edition;
-4. implementation roadmap/checklist;
-5. historical design assumptions or prior chat context.
-
-## Documentation maintenance rule
-
-Any document that changes from target design to implementation guidance should explicitly record which facts are **observed**, which are **chosen design decisions**, and which remain **open**. Never add real secret values to evidence, examples or troubleshooting notes.
+1. current read-only/live observation;
+2. dated acceptance evidence under `docs/evidence/`;
+3. `16-current-runtime-status.md`;
+4. accepted security decisions and specs;
+5. roadmap/checklist;
+6. historical assumptions or chat context.
