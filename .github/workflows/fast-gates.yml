@@ -37,3 +37,12 @@ jobs:
           fi
       - name: live-readiness-static
         run: pytest tests/plans/test_live_readiness_decisions.py tests/baseline/test_compose_architecture.py tests/baseline/test_tls_material.py -q
+      - name: repository non-HITL suite
+        run: pytest tests/ -m "not hitl" -q
+      - name: tracked-tree secret scan
+        run: bash scripts/ci/run-gates.sh --scan-only
+      - name: primary dry gates
+        run: bash scripts/ci/run-gates.sh --dry
+      - name: compose config only
+        working-directory: deployments/vault
+        run: docker compose config >/dev/null
