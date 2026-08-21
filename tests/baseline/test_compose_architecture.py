@@ -21,9 +21,11 @@ def test_single_node_topology():
 
 def test_oss_image_not_enterprise():
     comp = _compose()
-    img = comp["services"]["vault"]["image"]
+    vault = comp["services"]["vault"]
+    img = vault["image"]
     assert img == PINNED
     assert img.startswith("hashicorp/vault:"), "must be Community/OSS, not vault-enterprise"
+    assert "build" not in vault, "runtime must use only the pinned official image, not a local build path"
 
 def test_command_is_server():
     comp = _compose()
