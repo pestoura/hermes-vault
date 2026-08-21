@@ -2,7 +2,7 @@
 
 **Status:** approved transition design; repository-side only. External HSL mutation and live Vault operations remain `NOT_RUN`.
 
-**Owner:** `pestoura/hermes-vault` owns the shared service. This runbook never writes to `pestoura/hermes-security-labs`.
+**Owner:** `pestoura/hermes-vault` owns the shared service. This runbook never writes to `pestoura/hermes-security-labs`. **hermes-vault does not modify pestoura/hermes-security-labs** under this runbook.
 
 ## Current ruling — controlled parallel-run
 
