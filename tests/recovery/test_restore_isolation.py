@@ -120,3 +120,12 @@ def test_runtime_cleanup_releases_uid100_raft_permissions_without_root():
     teardown = src.split('cmd_teardown()', 1)[1].split('usage()', 1)[0]
     assert 'release_runtime_permissions "${runtime}"' in start
     assert 'release_runtime_permissions "${run}/runtime"' in teardown
+
+
+def test_start_mounts_ephemeral_group_readable_runtime_snapshot_copy():
+    src = _src()
+    start = src.split('cmd_start()', 1)[1].split('cmd_status()', 1)[0]
+    assert 'runtime_snap="${runtime}/input.snapshot"' in start
+    assert 'install -m 0640 "${snap}" "${runtime_snap}"' in start
+    assert '-v "${runtime_snap}:/vault/restore/input.snapshot:ro"' in start
+    assert '-v "${snap}:/vault/restore/input.snapshot:ro"' not in start
