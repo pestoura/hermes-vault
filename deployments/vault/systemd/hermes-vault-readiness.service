@@ -1,0 +1,11 @@
+[Unit]
+Description=Hermes Vault secret-free 24x7 readiness check
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/hermes-vault/deployments/vault/scripts/operational-readiness.sh
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
