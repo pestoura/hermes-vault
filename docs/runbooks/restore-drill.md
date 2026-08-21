@@ -1,6 +1,6 @@
 # ADR-023 — Isolated Raft restore drill
 
-**Status:** repository harness only. A live restore remains `NOT_RUN` until the operator completes the HITL sequence below.
+**Status:** `VERIFIED_ADR023_LIVE_ACCEPTED`. O live restore de 2026-08-21 concluiu com `RESTORE_DRILL_PASS`; ver `docs/evidence/2026-08-21-adr-023-live-acceptance.md`. O first-consumer gate permanece separado e `NOT_RUN`; este resultado não promove por si só `UNSEALED_READY`.
 
 This runbook is for the disposable `network=none` Vault created by `restore-drill.sh`. It must never be applied to `vault-vault-1` or to a container attached to `hermes-security-plane` / `hermes-vault-admin`.
 
