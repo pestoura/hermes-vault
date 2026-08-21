@@ -71,13 +71,18 @@ def test_backup_approle_is_bounded_and_never_issues_secret_id():
     assert "secret_id" not in text.lower().split("role-id")[-1]
 
 
-def test_snapshot_service_uses_encrypted_systemd_credentials():
+def test_snapshot_service_uses_user_scoped_encrypted_credentials_via_runtime_loader():
     service = (SYSTEMD / "hermes-vault-snapshot.service").read_text(encoding="utf-8")
     timer = (SYSTEMD / "hermes-vault-snapshot.timer").read_text(encoding="utf-8")
-    assert "LoadCredentialEncrypted=backup-secret-id:" in service
-    assert "LoadCredentialEncrypted=snapshot-passphrase:" in service
+    loader = (SCRIPTS / "run-scheduled-snapshot.sh").read_text(encoding="utf-8")
+    assert "LoadCredentialEncrypted=" not in service
     assert "EnvironmentFile=%h/.config/hermes-vault/backup.env" in service
-    assert "ExecStart=%h/hermes-vault/deployments/vault/scripts/scheduled-snapshot.py" in service
+    assert "ExecStart=%h/hermes-vault/deployments/vault/scripts/run-scheduled-snapshot.sh" in service
+    assert "systemd-creds --user --name=backup-secret-id decrypt" in loader
+    assert "systemd-creds --user --name=snapshot-passphrase decrypt" in loader
+    assert "XDG_RUNTIME_DIR" in loader and "mktemp -d" in loader
+    assert "chmod 700" in loader and "trap cleanup EXIT" in loader
+    assert "CREDENTIALS_DIRECTORY" in loader
     assert "OnCalendar=*-*-* 02:30:00" in timer
     assert "Persistent=true" in timer
 
