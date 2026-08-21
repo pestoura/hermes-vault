@@ -1,74 +1,43 @@
 #!/usr/bin/env bash
-#
-# bootstrap-checklist.sh — READ-ONLY checklist printer for the Hermes Vault
-# init/unseal/root bootstrap (Task B4, spec §8, §9, ADR-002).
-#
-# This script does NOT perform any secret-related operation. It ONLY prints the
-# operator checklist so a human can execute the HITL steps out-of-band.
-#
-# HARD BOUNDARY (never in unattended tasks):
-#   vault operator init
-#   vault operator unseal
-#   initial root token handling / revoke
-#   AppRole SecretID issuance / wrapping
-#   TLS private-key generation / custody
-#
-# This printer MUST NOT start Vault, run init/unseal, read or write tokens,
-# shares, keys, or SecretIDs, or generate TLS material. It is documentation as
-# code — a fail-closed guardrail, not an executor.
+# READ-ONLY checklist printer for Hermes Vault bootstrap. No live operation.
 set -euo pipefail
-
-cat <<'EOF'
+cat <<'CHECKLIST'
 ================================================================
- Hermes Vault — BOOTSTRAP CHECKLIST (READ-ONLY / PRINTER ONLY)
+ Hermes Vault — BOOTSTRAP CHECKLIST (READ-ONLY / ADR-022)
 ================================================================
+ [0] PRECONDITIONS
+  [ ] pinned Vault 1.21.4 running with strict TLS
+  [ ] operator shell has VAULT_ADDR / VAULT_CACERT
+  [ ] recovery material remains out-of-band
 
- STATUS: NOT_RUN
- All live steps below are HITL (operator-only) and NOT executed
- by this script, CI, or any unattended task.
+ [1] INIT — operator-only HITL
+  [ ] initialize Shamir 3/2
+  [ ] distribute 3 shares independently and preserve initial root out-of-band
 
-----------------------------------------------------------------
- [0] PRECONDITIONS (operator)
-----------------------------------------------------------------
-  [ ] Pinned image running (HSL digest, 1.21.4):
-      hashicorp/vault:1.21.4@sha256:4e33b126a59c0c333b76fb4e894722462659a6bec7c48c9ee8cea56fccfd2569
-  [ ] TLS listener up (B3, operator-only provisioning)
-  [ ] VAULT_ADDR / VAULT_CACERT set in operator shell
-  [ ] Quorum of >= 2 credentialed operators present
+ [2] UNSEAL — operator-only HITL
+  [ ] present two distinct shares
+  [ ] verify initialized=true and sealed=false
 
-----------------------------------------------------------------
- [1] INIT  (HITL — operator-only; DO NOT AUTOMATE)
-----------------------------------------------------------------
-  [ ] Run by operator out-of-band:
-        vault operator init -key-shares=3 -key-threshold=2
-  [ ] Capture 3 unseal keys + initial root token FROM TERMINAL OUTPUT
-  [ ] Record to OUT-OF-BAND CUSTODY immediately
-  [ ] Confirm nothing written to repo / logs / CI / evidence bundle
+ [3] ENABLE AUDIT — operator-only HITL, MUST PRECEDE JIT
+  [ ] enable canonical file/ audit device
+  [ ] verify audit device is active before further bootstrap
 
-----------------------------------------------------------------
- [2] UNSEAL — QUORUM  (HITL — operator-only, x2)
-----------------------------------------------------------------
-  [ ] Operator A:  vault operator unseal <UNSEAL_KEY_1>
-  [ ] Operator B:  vault operator unseal <UNSEAL_KEY_2>
-  [ ] Confirm Vault is unsealed (threshold reached)
+ [4] JIT CERT ADMIN BOOTSTRAP — operator-only HITL
+  [ ] prepare a dedicated self-signed ClientAuth leaf certificate
+  [ ] keep its secret key out of Git/Hermes/Context Core/prompts
+  [ ] apply ADR-022 issuer policies, cert auth role and hermes-vault-admin token role
 
-----------------------------------------------------------------
- [3] REVOKE INITIAL ROOT  (HITL — operator-only)
-----------------------------------------------------------------
-  [ ] After admin identity/policy in place, operator runs out-of-band:
-        vault token revoke <INITIAL_ROOT_TOKEN>
-  [ ] Confirm root token no longer usable
+ [5] INDEPENDENT JIT PROOF — operator-only HITL
+  [ ] authenticate with the certificate without root
+  [ ] mint a <=10m non-renewable orphan JIT token
+  [ ] verify required capability and an explicit negative capability
+  [ ] revoke/expire the JIT token
 
-----------------------------------------------------------------
- [4] ENABLE AUDIT  (HITL — operator-only)
-----------------------------------------------------------------
-  [ ] vault audit enable file file_path=/vault/logs/audit.log
+ [6] REVOKE INITIAL ROOT — operator-only HITL
+  [ ] only after independent JIT proof is PASS
+  [ ] confirm the initial root token is no longer usable
 
-----------------------------------------------------------------
- REMINDER: this printer performs NO secret operations.
- Live init / unseal / root / SecretID / TLS-key remain
- operator-only and OUT OF SCOPE of any automated run.
+ REMINDER: this printer performs NO secret operation.
 ================================================================
-EOF
-
-echo "[checklist] printed operator bootstrap checklist (read-only). No secret operation performed."
+CHECKLIST
+echo "[checklist] printed ADR-022 bootstrap checklist only."
