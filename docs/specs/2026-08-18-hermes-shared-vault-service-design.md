@@ -229,8 +229,8 @@ Migration principles (design-level; execution is implementation):
 | Docker adds container-runtime dependency vs native systemd | Accepted for isolation/portability (supersedes `docs/01` systemd plan) | `read_only`, `cap_drop ALL`, `no-new-privileges`, dedicated volume |
 | No Enterprise namespaces: more mount management | Accepted (ADR-013) | Dedicated mounts + exact-path policies + negative tests |
 | Shared service increases blast radius if Vault compromised | Mitigated by per-consumer isolation, audit, negative tests | Fail-closed, contract review gate |
-| Key continuity for existing HSL-signed evidence (non-exportable key) | **Owner decision required** (§21) | Verify-only retained mount or re-sign policy |
-| Recovery material custody | Out-of-band, owner responsibility, never in repo (`SECURITY.md`) | Documented quorum + offline runbook |
+| Key continuity for existing HSL-signed evidence (non-exportable key) | Resolved by ADR-018: legacy verify-only continuity | Preserve original signatures; no new legacy signing after cutover |
+| Recovery material custody | Resolved by ADR-021: independent out-of-band Shamir 3/2 custody | No concrete custody locators in repo/Hermes/Jarvas |
 
 ## 21. Testing and verification strategy
 
@@ -275,20 +275,31 @@ This spec **preserves** all historical ADRs in `docs/13` (ADR-001 through ADR-01
 3. **No conflict with ADR-006/013.** Single-node Raft and Community-first remain the baseline; this spec reinforces them.
 4. **No conflict with ADR-002/011/012/015/017.** Root-out-of-Hermes, audit-before-migration, restore-drill gate, fail-closed, and explicit secret-zero design are all reinforced.
 
+**Resolution addendum (2026-08-21):** ADR-018 through ADR-021 resolve the structural choices that remained open in §25. The historical questions below are preserved for provenance; their resolutions supersede the undecided state without asserting that live runtime steps have been executed.
+
 ## 24. Self-review result
 
 - Placeholders/TODO/TBD/FIXME: none present.
 - Contradictions: none found. Edition (Community/OSS), deployment (Docker), seal (manual Shamir 3/2, no auto-unseal), ownership (shared service), and isolation (dedicated mounts, no namespaces) are internally consistent.
-- Ambiguity: resolved where possible; genuinely structural open items are listed in §25 rather than left implicit.
+- Ambiguity: structural choices formerly listed in §25 were resolved on 2026-08-21 and linked to ADR-018 through ADR-021.
 - Secret hygiene: no secret values, tokens, SecretIDs, or recovery material present.
 - ADR alignment: consistent; superseded assumptions explicitly recorded without deleting history.
 
-## 25. Unresolved structural decisions requiring owner input
+## 25. Structural decisions — owner resolutions
 
-These are genuine structural choices that this spec deliberately does not decide; they require owner decision before or during implementation:
+The original questions are preserved below for auditability. **This resolution records owner decisions and does not claim live implementation.** Runtime/bootstrap gates remain separately verifiable and are never inferred from these decisions.
 
-1. **Key continuity for existing HSL-signed evidence.** The current HSL transit key `hermes-lab-l1-signer` is non-exportable (`exportable=false`, `allow_plaintext_backup=false`). It cannot be migrated as material to the shared `hsl-transit` mount. Owner must decide: (a) retain the old HSL mount read-only for `verify` during a transition window; (b) accept that historical signatures become unverifiable and re-sign evidence with the new key; or (c) define a verify-continuity policy. This affects migration safety, not the shared-service design.
-2. **Network exposure model.** Design assumes Vault is reached by consumers via loopback/container-network TLS on the Jarvas host. Owner must confirm exact bind address, port, and how HSL (a separate deployment/repo) connects to the shared service.
-3. **HSL deployment cutover vs parallel-run.** Owner must decide whether `deployment/vault-lab-l1` is decommissioned after migration, kept read-only for verify, or run in parallel during transition.
-4. **Recovery material custody.** Out-of-band custody location is an owner responsibility and must never enter the repository (`SECURITY.md`). The design requires it to be outside Hermes/GitHub/host-readable paths, but the concrete location is owner-decided.
-5. **Exact image version and registry.** Design requires the official `hashicorp/vault` image pinned by digest. Owner confirms the specific version and whether an internal mirror is used.
+1. **Key continuity for existing HSL-signed evidence.** The current HSL transit key `hermes-lab-l1-signer` is non-exportable (`exportable=false`, `allow_plaintext_backup=false`). It cannot be migrated as material to the shared `hsl-transit` mount. Original options were: retain the old HSL path for verification, abandon historical verification/re-sign, or define another continuity policy.
+   - **RESOLVED 2026-08-21 — ADR-018:** retain the legacy HSL Vault/key path strictly **verify-only** during the continuity window. After cutover, no new signature is created with `hermes-lab-l1-signer`. Historical evidence is not bulk re-signed; original signatures remain the provenance anchor.
+
+2. **Network exposure model.** The original design assumed loopback/container-network TLS but left exact bind/connectivity undecided.
+   - **RESOLVED 2026-08-21 — ADR-019:** host publication remains exactly `127.0.0.1:8200:8200`; consumer connectivity uses the Docker-internal shared network `hermes-security-plane` with `internal: true` and Vault DNS alias `hermes-vault`. No LAN/Internet publication, host networking, ingress or reverse proxy is introduced in the MVP.
+
+3. **HSL deployment cutover vs parallel-run.** The original decision was whether `deployment/vault-lab-l1` should be decommissioned, kept read-only, or run in parallel.
+   - **RESOLVED 2026-08-21 — ADR-020:** use a controlled **parallel-run**. The shared Vault is tested without becoming authoritative; after all acceptance gates pass, it becomes the sole signer for new evidence and the legacy deployment becomes verify-only. Retirement occurs only after the continuity/retention gate.
+
+4. **Recovery material custody.** The original design required out-of-band custody but left the concrete location owner-decided.
+   - **RESOLVED 2026-08-21 — ADR-021:** keep **Shamir 3/2** with three independent out-of-band custody locations. The concrete location and identifying metadata of each share are intentionally never recorded in GitHub, Hermes or Jarvas. Generation/distribution/use remain HITL.
+
+5. **Exact image version and registry.** The original design required official `hashicorp/vault` pinned by digest.
+   - **RESOLVED 2026-08-21:** MVP uses `hashicorp/vault:1.21.4@sha256:4e33b126a59c0c333b76fb4e894722462659a6bec7c48c9ee8cea56fccfd2569` from the official registry. No internal mirror is introduced for the MVP; changing registry/version requires a separately verified change.
