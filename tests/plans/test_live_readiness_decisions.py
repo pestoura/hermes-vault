@@ -73,15 +73,18 @@ def test_resolved_spec_has_no_stale_open_decision_language():
     assert "ADR-018" in text and "ADR-020" in text
 
 
-def test_spec_status_matches_initialized_sealed_runtime_without_promoting_live_gates():
+def test_spec_status_matches_verified_unsealed_health_runtime_without_promoting_readiness():
     text = _text(SPEC)
     assert "Design / specification only. Not implemented." not in text
     assert "repository-side implementation" in text.lower()
     assert "Live Vault deployment/start: `VERIFIED_PRE_INIT`" in text
     assert "Vault initialization: `VERIFIED_INITIALIZED_SEALED`" in text
-    assert "Vault unseal: `NOT_RUN`" in text
-    assert "Vault initialization/unseal: `NOT_RUN`" not in text
+    assert "Vault unseal: `VERIFIED_UNSEALED_HEALTHY`" in text
     assert "VAULT_HEALTH_PASS" in text and "VAULT_UNSEALED" in text
+    assert "HTTP 200" in text
+    assert "sealed=false" in text
+    assert "UNSEALED_READY" in text
+    assert "audit" in text.lower() and "NOT_RUN" in text
     assert "original design/spec change" in text.lower()
     assert "current implementation acceptance" in text.lower()
 
