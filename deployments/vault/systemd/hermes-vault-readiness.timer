@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Hermes Vault readiness assurance continuously
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

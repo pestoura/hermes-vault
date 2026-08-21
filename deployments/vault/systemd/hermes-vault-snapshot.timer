@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Hermes Vault encrypted Raft snapshot
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+RandomizedDelaySec=10min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

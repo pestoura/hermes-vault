@@ -1,0 +1,20 @@
+[Unit]
+Description=Hermes Vault scheduled encrypted Raft snapshot
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+Environment=VAULT_ADDR=https://127.0.0.1:8200
+Environment=VAULT_CACERT=%h/hermes-vault/deployments/vault/certs/ca.pem
+Environment=VAULT_BACKUP_DIR=%h/.local/state/hermes-vault/backups
+Environment=VAULT_SNAPSHOT_RETENTION=14
+EnvironmentFile=%h/.config/hermes-vault/backup.env
+LoadCredentialEncrypted=backup-secret-id:%h/.config/credstore.encrypted/hermes-vault-backup-secret-id
+LoadCredentialEncrypted=snapshot-passphrase:%h/.config/credstore.encrypted/hermes-vault-snapshot-passphrase
+ExecStart=%h/hermes-vault/deployments/vault/scripts/scheduled-snapshot.py
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/hermes-vault
