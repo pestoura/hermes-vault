@@ -131,3 +131,51 @@ Fallback só existe se explicitamente desenhado e testado.
 **Decisão:** a credencial inicial usada por cada workload para autenticar no Vault deve ser tratada como problema de bootstrap próprio.
 
 AppRole SecretID, certificado, JWT ou outro bootstrap material não pode ser simplesmente movido para outro `.env` e considerado resolvido.
+
+---
+
+## ADR-018 — Continuidade criptográfica HSL por verify-only
+
+**Decisão:** a chave histórica HSL `hermes-lab-l1-signer`, por ser não exportável, permanece no deployment legado exclusivamente em modo **verify-only** durante a janela de continuidade. Depois do cutover não são produzidas novas assinaturas com essa chave.
+
+**Regra de integridade:** evidência histórica não é sujeita a bulk re-sign/re-signing para simular continuidade criptográfica. A assinatura original e a respetiva cadeia de verificação são preservadas enquanto existir obrigação de retenção/verificação.
+
+**Motivo:** manter verificabilidade e proveniência histórica sem tentar exportar material não exportável nem substituir assinaturas originais por novas assinaturas semanticamente diferentes.
+
+**Saída:** o componente legado pode ser retirado apenas quando a política de retenção/continuidade permitir abandonar a verificação histórica ou existir mecanismo canónico equivalente aprovado.
+
+---
+
+## ADR-019 — Security plane Docker privado, sem exposição LAN
+
+**Decisão:** o Vault partilhado integra a rede Docker privada `hermes-security-plane`, declarada com `internal: true`, e usa o alias DNS interno `hermes-vault` para comunicação container-to-container.
+
+**Publicação no host:** mantém-se exclusivamente `127.0.0.1:8200:8200` para operação local. Não é permitido publicar a API Vault em `0.0.0.0`, endereço LAN, Internet, host networking ou ingress/reverse proxy no MVP.
+
+**Consumo:** consumidores autorizados juntam-se à rede `hermes-security-plane` no respetivo onboarding e usam TLS para `hermes-vault:8200`. A adesão de um consumidor não transfere ownership da rede/serviço para esse consumidor.
+
+**Motivo:** permitir conectividade entre stacks Docker independentes no Jarvas sem aumentar a superfície de exposição do serviço.
+
+---
+
+## ADR-020 — Parallel-run controlado para cutover HSL
+
+**Decisão:** a migração HSL usa **parallel-run controlado**. Enquanto o novo shared Vault está em aceitação, o caminho legado mantém o estado pré-cutover. Depois de todas as gates live obrigatórias passarem, o shared Vault torna-se a única autoridade para assinar **new evidence / nova evidência**, e o Vault HSL legado passa a **verify-only**.
+
+**Gate de cutover:** exige, no mínimo, health/unseal operacional, `AUDIT_PASS`, `RESTORE_DRILL_PASS`, isolamento/negative-capability HSL, conectividade TLS, sign/verify do novo signer e verificação de evidência histórica pelo caminho legado.
+
+**Rollback:** antes do cutover, regressar ao legado não altera autoridade. Depois do cutover não se volta automaticamente a assinar com a chave histórica; qualquer reversão de autoridade de signing é uma nova decisão owner-gated.
+
+**Motivo:** reduzir risco de migração e preservar rollback sem criar duas autoridades concorrentes para novas assinaturas.
+
+---
+
+## ADR-021 — Shamir 3/2 com custódia independente out-of-band
+
+**Decisão:** manter **Shamir 3/2**: três shares, threshold dois. As três shares ficam sob **three independent** custódias/localizações out-of-band, fora de GitHub, Hermes, Jarvas e de qualquer storage que o próprio Vault proteja.
+
+**Proibição de metadados sensíveis:** a concrete location/localização concreta de cada share, identificadores de suporte, passwords, envelopes, chaves de cifragem ou outros locators de recovery não são registados neste repositório, no Context Core, em logs ou em estado operacional do Hermes/Jarvas.
+
+**Operação:** criação, distribuição, consulta, utilização e rotação das shares são exclusivamente HITL. O repositório pode documentar responsabilidades, quorum e procedimento, nunca o material nem a sua localização concreta.
+
+**Motivo:** evitar que comprometimento do host/automação/repositório forneça simultaneamente storage Vault e material necessário para o desbloquear.
