@@ -27,7 +27,9 @@ def test_adr_018_preserves_historical_verification_without_resigning():
 def test_adr_019_private_security_plane_contract():
     text = _text(ADR)
     assert "ADR-019" in text
+    assert "ADR-019A" in text
     assert "hermes-security-plane" in text
+    assert "hermes-vault-admin" in text
     assert "internal: true" in text
     assert "127.0.0.1:8200" in text
     assert "hermes-vault" in text
@@ -71,11 +73,14 @@ def test_resolved_spec_has_no_stale_open_decision_language():
     assert "ADR-018" in text and "ADR-020" in text
 
 
-def test_spec_status_matches_repo_side_implementation_without_claiming_live_runtime():
+def test_spec_status_matches_verified_preinit_runtime_without_promoting_live_gates():
     text = _text(SPEC)
     assert "Design / specification only. Not implemented." not in text
     assert "repository-side implementation" in text.lower()
-    assert "Live Vault deployment/bootstrap: `NOT_RUN`" in text
+    assert "Live Vault deployment/start: `VERIFIED_PRE_INIT`" in text
+    assert "Vault initialization/unseal: `NOT_RUN`" in text
+    assert "Live Vault deployment/bootstrap: `NOT_RUN`" not in text
+    assert "VAULT_HEALTH_PASS" in text and "VAULT_UNSEALED" in text
     assert "original design/spec change" in text.lower()
     assert "current implementation acceptance" in text.lower()
 
@@ -86,11 +91,16 @@ def test_compose_uses_private_internal_security_plane_and_loopback_publication()
     assert vault.get("ports") == ["127.0.0.1:8200:8200"]
     nets = vault.get("networks", {})
     assert "hermes-security-plane" in nets
+    assert "hermes-vault-admin" in nets
     net_cfg = nets["hermes-security-plane"] or {}
     assert "hermes-vault" in net_cfg.get("aliases", [])
     top = comp.get("networks", {}).get("hermes-security-plane", {})
     assert top.get("name") == "hermes-security-plane"
     assert top.get("internal") is True
+    admin = comp.get("networks", {}).get("hermes-vault-admin", {})
+    assert admin.get("name") == "hermes-vault-admin"
+    assert admin.get("internal") is False
+    assert admin.get("driver_opts", {}).get("com.docker.network.bridge.enable_ip_masquerade") == "false"
 
 
 def test_operator_tls_contract_includes_internal_and_loopback_sans():

@@ -1,6 +1,6 @@
 # Hermes Shared Vault Service — Design Spec
 
-- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/bootstrap: `NOT_RUN`**; no runtime gate is inferred from repository state.
+- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/start: `VERIFIED_PRE_INIT` on HermesJarvas (2026-08-21); Vault initialization/unseal: `NOT_RUN`.** This runtime checkpoint proves process start, strict-TLS loopback reachability and pre-init Raft configuration only; it does **not** imply `VAULT_HEALTH_PASS`, `VAULT_UNSEALED`, audit, restore, consumer acceptance or production readiness.
 - **Original design date:** 2026-08-18
 - **Structural decision update:** 2026-08-21
 - **Original design base SHA:** `fec7b5b0a63165a93f5b6e919959094cfced569a`
@@ -270,7 +270,7 @@ Live gates remain separate and may only be claimed after execution:
 
 ## 22. Original design/spec change invariants (historical)
 
-The following held for the **original design/spec change** only. They are preserved as provenance and are not claims about the current repository-side implementation. **Current implementation acceptance** is governed by §21.2 and the active implementation plan. Live Vault deployment/bootstrap remains `NOT_RUN` until separately executed.
+The following held for the **original design/spec change** only. They are preserved as provenance and are not claims about the current repository-side implementation. **Current implementation acceptance** is governed by §21.2 and the active implementation plan. Live Vault deployment/start and strict-TLS pre-init connectivity were separately executed and verified on HermesJarvas on 2026-08-21. Vault initialization, Shamir unseal, audit enablement, restore drill, consumer bootstrap and production promotion remain `NOT_RUN` until separately executed and evidenced.
 
 - No Vault runtime was installed, started, initialized, unsealed, or modified by the original spec change.
 - No root token, recovery key, Shamir share, SecretID, or token was created, read, printed, or transmitted.
