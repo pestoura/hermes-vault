@@ -9,9 +9,11 @@ services:
     environment:
       VAULT_ADDR: "https://127.0.0.1:8200"
       VAULT_CACERT: "/vault/certs/ca.pem"
+      SKIP_SETCAP: "1"
+      SKIP_CHOWN: "1"
     volumes:
       - ./config/vault.hcl:/vault/config/vault.hcl:ro
-      - vault-data:/vault/data
+      - vault-data:/vault/file
       - vault-audit:/vault/logs
       - ./certs:/vault/certs:ro   # TLS material mounted read-only; private key HITL (see B3)
     ports:
