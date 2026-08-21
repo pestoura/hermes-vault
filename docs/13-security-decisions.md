@@ -198,3 +198,21 @@ AppRole SecretID, certificado, JWT ou outro bootstrap material não pode ser sim
 **Operação:** criação, distribuição, consulta, utilização e rotação das shares são exclusivamente HITL. O repositório pode documentar responsabilidades, quorum e procedimento, nunca o material nem a sua localização concreta.
 
 **Motivo:** evitar que comprometimento do host/automação/repositório forneça simultaneamente storage Vault e material necessário para o desbloquear.
+
+---
+
+## ADR-022 — Administração JIT por certificado após bootstrap audit-first
+
+**Decisão:** substituir o initial root token por uma cadeia administrativa JIT baseada em certificado cliente. A ordem canónica de bootstrap é: `audit` → policies administrativas → `auth/cert` → identidade `vault-admin-issuer` → token role `hermes-vault-admin` → prova independente sem root → revogação do initial root token.
+
+**Identidade de entrada:** o certificado cliente do operador é self-signed/dedicado a esta função e é registado apenas pelo seu certificado público. A respetiva private key é segredo operator-only, nunca é versionada, lida por automação, guardada no Hermes/Context Core, nem enviada para prompts/logs.
+
+**Issuer:** o login por certificado recebe apenas a policy `vault-admin-issuer`. Essa policy pode exclusivamente efetuar `update` em `auth/token/create/hermes-vault-admin`; não recebe capacidades administrativas diretas.
+
+**JIT admin:** a token role `hermes-vault-admin` emite apenas policies administrativas explicitamente permitidas, com `orphan=true`, `renewable=false` (**non-renewable**), sem `default` policy e `token_explicit_max_ttl=10m`. O pedido deve selecionar apenas as classes necessárias à operação.
+
+**Audit-first:** o audit device é ativado e validado antes da instalação/uso da cadeia JIT. Exceções só existem em recovery/break-glass explicitamente autorizado.
+
+**Root:** o initial root token permanece exclusivamente out-of-band durante o bootstrap e é revogado apenas depois de uma prova independente demonstrar: login por certificado, emissão de JIT token, capability positiva esperada, negative capability fora do scope e revogação do JIT token.
+
+**Motivo:** remover root da operação normal sem substituir um segredo privilegiado permanente por outro, preservar least privilege e produzir trilho de auditoria desde o início da administração pós-bootstrap.
