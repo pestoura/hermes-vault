@@ -6,7 +6,7 @@ After=docker.service network-online.target
 Type=oneshot
 Environment=VAULT_ADDR=https://127.0.0.1:8200
 Environment=VAULT_CACERT=%h/hermes-vault/deployments/vault/certs/ca.pem
-Environment=VAULT_BACKUP_DIR=%h/.local/state/hermes-vault/backups
+Environment=VAULT_BACKUP_DIR=%h/.local/state/hermes-vault-backups
 Environment=VAULT_SNAPSHOT_RETENTION=14
 EnvironmentFile=%h/.config/hermes-vault/backup.env
 ExecStart=%h/hermes-vault/deployments/vault/scripts/run-scheduled-snapshot.sh
@@ -15,5 +15,5 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=read-only
-StateDirectory=hermes-vault
+StateDirectory=hermes-vault-backups
 StateDirectoryMode=0700

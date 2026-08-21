@@ -78,8 +78,9 @@ def test_snapshot_service_uses_user_scoped_encrypted_credentials_via_runtime_loa
     assert "LoadCredentialEncrypted=" not in service
     assert "EnvironmentFile=%h/.config/hermes-vault/backup.env" in service
     assert "ExecStart=%h/hermes-vault/deployments/vault/scripts/run-scheduled-snapshot.sh" in service
-    assert "StateDirectory=hermes-vault" in service
+    assert "StateDirectory=hermes-vault-backups" in service
     assert "StateDirectoryMode=0700" in service
+    assert "Environment=VAULT_BACKUP_DIR=%h/.local/state/hermes-vault-backups" in service
     assert "systemd-creds --user --name=backup-secret-id decrypt" in loader
     assert "systemd-creds --user --name=snapshot-passphrase decrypt" in loader
     assert "XDG_RUNTIME_DIR" in loader and "mktemp -d" in loader
