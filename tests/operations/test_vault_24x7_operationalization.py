@@ -80,6 +80,8 @@ def test_snapshot_service_uses_user_scoped_encrypted_credentials_via_runtime_loa
     assert "ExecStart=%h/hermes-vault/deployments/vault/scripts/run-scheduled-snapshot.sh" in service
     assert "StateDirectory=hermes-vault-backups" in service
     assert "StateDirectoryMode=0700" in service
+    assert "ProtectSystem=full" in service
+    assert "ProtectSystem=strict" not in service
     assert "Environment=VAULT_BACKUP_DIR=%h/.local/state/hermes-vault-backups" in service
     assert "systemd-creds --user --name=backup-secret-id decrypt" in loader
     assert "systemd-creds --user --name=snapshot-passphrase decrypt" in loader
