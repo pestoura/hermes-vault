@@ -1,11 +1,12 @@
 # Hermes Shared Vault Service — Design Spec
 
-- **Status:** Design / specification only. Not implemented. No runtime, deployment, policy, workflow, or secret material is created or mutated by this document.
-- **Date:** 2026-08-18
-- **Base SHA (exact current `main`):** `fec7b5b0a63165a93f5b6e919959094cfced569a`
+- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/bootstrap: `NOT_RUN`**; no runtime gate is inferred from repository state.
+- **Original design date:** 2026-08-18
+- **Structural decision update:** 2026-08-21
+- **Original design base SHA:** `fec7b5b0a63165a93f5b6e919959094cfced569a`
 - **Owner of service:** `pestoura/hermes-vault`
 - **First consumer:** `pestoura/hermes-security-labs` (HSL)
-- **Scope of this change:** documentation only, on an isolated branch from exact `main`. No code, no compose, no policies, no workflows, no HSL modification, no GitHub PR/issue mutation.
+- **Scope:** canonical architecture and security contract for the shared Vault service. Repository-side implementation is maintained in `pestoura/hermes-vault`; this document itself performs no live Vault operation and carries no secret, recovery, token, SecretID, Shamir-share, or TLS private-key material.
 
 ## 1. Purpose
 
@@ -16,11 +17,10 @@ This spec resolves the approved architecture decision: Vault is a shared service
 ## 2. Non-goals
 
 - This document is not an implementation plan, runbook, or migration execution plan.
-- It does not define concrete policy files, compose files, Ansible/systemd units, or CI workflows (those are implementation concerns).
-- It does not open or close GitHub PRs/issues.
+- It does not itself execute deployment, policy, workflow, or runtime changes; those are governed by implementation plans, tests, PRs and runbooks in this repository.
 - It does not perform any Vault operation: no init, unseal, root, SecretID, token, or recovery action.
 - It does not assume HashiCorp Vault Enterprise or HCP features.
-- It does not decide the custody location of recovery material (that is an owner responsibility, kept out of the repository per `SECURITY.md`).
+- It never records the concrete custody location of recovery material; ADR-021 defines only the custody model and keeps locators out-of-band.
 
 ## 3. Ownership boundary
 
@@ -51,12 +51,12 @@ MVP deploys Vault as a **Docker container** on the Jarvas host.
 
 This **supersedes** the earlier `docs/01-reference-architecture.md` "Plano físico inicial recomendado", which recommended native `vault.service` / `vault-agent.service` / `credential-broker.service` systemd units on the host. The intent of that section — a single Vault node on the Jarvas host, storage under a dedicated path — is preserved; the **mechanism** (systemd host units) is replaced by Docker for portability, isolation, and reproducible deployment. `docs/01` is retained as historical context; this spec is the current decision.
 
-Deployment constraints (design-level, to be enforced at implementation):
+Deployment constraints:
 
 - Official `hashicorp/vault` image, pinned by digest.
 - Container runs with `read_only` root filesystem, `cap_drop: ALL`, `no-new-privileges`.
 - Vault data persisted on a dedicated Docker volume with restricted ownership; not on a shared or world-readable path.
-- Network exposure limited to what consumers require (design assumes loopback/container-network TLS on the Jarvas host; exact bind/port is an owner decision — see §19).
+- Network exposure is resolved by ADR-019: host publication is exactly `127.0.0.1:8200:8200`; authorised container consumers use TLS on the Docker-internal `hermes-security-plane` network through alias `hermes-vault`; no LAN/Internet publication is part of the MVP.
 - Healthcheck and controlled restart procedure owned by `hermes-vault`.
 
 ## 6. Storage: single-node Integrated Storage / Raft
@@ -69,13 +69,14 @@ Deployment constraints (design-level, to be enforced at implementation):
 
 - Vault listens only with **TLS enabled**; plain HTTP listener is not used for the operational API.
 - Certificates are issued and managed per the PKI design (`docs/06`); until PKI is operational, a locally provisioned TLS cert is used, but TLS itself is non-optional.
+- The MVP server-certificate SAN contract covers `DNS:hermes-vault`, `DNS:localhost`, and `IP:127.0.0.1`; private-key generation/custody remains operator-only HITL.
 - mTLS between internal components is a Later item (`docs/06`); the MVP requires at minimum server TLS on the Vault API.
 
 ## 8. Seal: manual Shamir 3/2, no auto-unseal in MVP
 
 - MVP uses **Shamir manual unseal with threshold 2 of 3 key shares**.
 - **No auto-unseal** in MVP. Rationale: the Jarvas environment is personal/self-hosted; introducing an external auto-unseal dependency would reduce recoverability (per `docs/09` seal-design guidance).
-- Recovery/unseal material is handled out-of-band, outside Hermes, outside GitHub, outside the Vault storage it unlocks (ADR-002, `docs/09`).
+- Recovery/unseal material is handled out-of-band, outside Hermes, outside GitHub, outside the Vault storage it unlocks (ADR-002, ADR-021, `docs/09`).
 - After restart, Vault remains sealed until an operator with the required quorum performs manual unseal using the out-of-band procedure.
 - This spec performs **no** unseal, root, or Shamir operation.
 
@@ -123,7 +124,7 @@ HSL consumes the shared service through the capability contract with:
 - A **dedicated AppRole** (`hsl-signer`) whose policy allows only the HSL transit operations above and nothing else.
 - No access to other consumers' mounts, to `sys/*`, or to administrative paths.
 
-HSL's existing in-repo deployment (`deployment/vault-lab-l1/`) is **not** the owner of the shared service under this design (see §15). HSL becomes a consumer only.
+HSL's historical in-repo deployment (`deployment/vault-lab-l1/`) is **not** the owner of the shared service under this design (see §17). HSL becomes a consumer only.
 
 ## 14. Provider-neutral capability contract (no secret material)
 
@@ -175,9 +176,9 @@ The first credential each workload uses to authenticate to Vault (AppRole Secret
 - If audit device is unavailable, promotion/real-secret use is blocked.
 - A red security/contract/recovery regression in `hermes-vault` blocks related consumer activation until resolved (consistent with `docs/15` delivery model).
 
-## 17. Migration from current HSL-owned deployment
+## 17. Migration from the historical HSL-owned deployment
 
-Current state: HSL owns a Vault deployment under `deployment/vault-lab-l1/` (single-node Raft, TLS, AppRole signer, transit key `hermes-lab-l1-signer`).
+Historical baseline: HSL was documented as owning a Vault deployment under `deployment/vault-lab-l1/` (single-node Raft, TLS, AppRole signer, transit key `hermes-lab-l1-signer`). That runtime state must be re-confirmed immediately before cross-repo execution; it is not inferred from this spec.
 
 Target state: `hermes-vault` owns the shared service; HSL consumes via contract with a dedicated transit mount/key.
 
@@ -185,15 +186,15 @@ Migration principles (design-level; execution is implementation):
 
 1. Stand up the shared service per this spec (Docker, Raft, TLS, Shamir 3/2, audit, restore drill) before HSL depends on it.
 2. Create HSL's dedicated mount/key/AppRole under the shared service; verify with negative-capability tests.
-3. Repoint HSL's signing/evidence path from `deployment/vault-lab-l1` transit to the shared `hsl-transit/hsl-signing` (or retained verify-only mount during transition — see §19).
-4. Decommission or freeze the HSL-owned deployment only after the shared path is validated and the key-continuity decision (§19) is made.
-5. HSL is not modified by this spec; the migration execution is a separate implementation effort.
+3. After shared-service acceptance, repoint HSL signing/evidence to `hsl-transit/hsl-signing`; preserve the legacy `hermes-lab-l1-signer` path only for historical **verify-only** continuity as defined by ADR-018 and ADR-020.
+4. Enter `SHARED_SIGN_ACTIVE_LEGACY_VERIFY_ONLY` only after the cutover gates in `docs/runbooks/hsl-key-continuity.md` pass. Retire the legacy verifier only after continuity/retention sign-off; do not bulk re-sign historical evidence.
+5. HSL is not modified by this spec; the migration execution is a separate cross-repo implementation effort.
 
 ## 18. PR #17 superseded handling and PR-chain implications
 
-- PR #17 (`epic-03/credential-broker-core`) is marked **SUPERSEDED ARCHITECTURE — DO NOT MERGE**. Its handling, and the implications for the stacked PR chain (#14 → #15 → #16 → #17/#18), are **implementation concerns** and are explicitly **out of scope for this specification**.
-- This spec does not merge, close, reopen, or modify any PR or issue. It records only that the shared-service ownership boundary supersedes the lab-dedicated deployment assumption that earlier PRs may have presupposed.
-- The PR-chain reconciliation (whether #17 is closed, rewritten, or absorbed; how #18's `VaultCredentialProvider` aligns with the provider-neutral contract) is deferred to implementation planning.
+- PR #17 (`epic-03/credential-broker-core`) is classified **SUPERSEDED ARCHITECTURE — DO NOT MERGE** by the implementation governance model; its historical design is not authoritative for the shared-service ownership boundary.
+- The implementation process subsequently closes superseded PRs only with auditable rationale; the spec itself does not perform GitHub mutations.
+- PR #18's `VaultCredentialProvider` remains a separate/deferred provider implementation aligned to the provider-neutral contract, not a generic `secret.read` surface.
 
 ## 19. MVP / Later / Future split
 
@@ -234,62 +235,73 @@ Migration principles (design-level; execution is implementation):
 
 ## 21. Testing and verification strategy
 
-### 21.1 This specification (design change) is verified by
+### 21.1 Original specification change verification (historical)
 
-- No placeholder/TODO/TBD/FIXME text remains in the document.
-- No contradiction between sections (edition, deployment, seal, ownership, isolation).
-- No secret material, no real token/SecretID/recovery value present.
-- Consistent with existing ADRs (`docs/13`); superseded assumptions recorded, historical docs not deleted.
-- Single isolated commit on a branch from exact `main` `fec7b5b0a63165a93f5b6e919959094cfced569a`; only the spec file added.
+The original design/spec change was documentation-only and was verified against its original base SHA. Those checks are retained as provenance; they are **not current implementation acceptance** and must not be used to infer runtime readiness.
 
-### 21.2 Future implementation verification (design-level checklist)
+Historical checks included:
 
-- Static policy lint (no wildcard/sudo for normal identities).
-- Negative-capability matrix tests per consumer AppRole.
-- Restore-drill acceptance in isolated environment.
-- Audit device functional test (auth + capability events present, redaction verified).
-- TLS strictness test (no plain-HTTP operational listener).
-- Shamir quorum test in non-production (threshold behavior).
-- Provider-neutral contract conformance tests (consumer depends on contract, not Vault API).
-- HSL dedicated mount isolation tests (sign/verify own key; denied cross-path).
-- Fail-closed test (sealed Vault → consumer denied, no fallback).
+- no placeholder/TODO/TBD/FIXME text in the design;
+- no secret material or real token/SecretID/recovery value;
+- consistency with ADR-001 through ADR-017 at the time;
+- isolated documentation-only change from original design base `fec7b5b0a63165a93f5b6e919959094cfced569a`.
 
-## 22. Invariants for THIS change
+### 21.2 Current implementation acceptance and future live verification
 
-The following hold for the design/spec change only and are not violated by it:
+Current implementation acceptance is evidence-driven through the implementation plan, exact-SHA PR review and repository gates. Safe repository-side checks include:
 
-- No Vault runtime is installed, started, initialized, unsealed, or modified.
-- No root token, recovery key, Shamir share, SecretID, or token is created, read, printed, or transmitted.
-- No real secret material is referenced or stored in the repository.
-- No deployment files, policies, compose files, or workflows are written (only this design document).
-- `pestoura/hermes-security-labs` and any other repository are not modified.
-- No GitHub PR or issue is opened, closed, or mutated.
-- The change is documentation-only on an isolated branch from exact `main`.
+- full `pytest tests/ -m 'not hitl'` suite;
+- policy lint and provider-neutral contract tests;
+- lifecycle/global invariants and secret-zero tests;
+- tracked-tree secret scan;
+- `docker compose config` without create/start;
+- static network/TLS/runbook contract tests.
+
+Live gates remain separate and may only be claimed after execution:
+
+- Vault health/unseal acceptance;
+- negative-capability matrix against live consumer AppRole;
+- isolated restore-drill acceptance;
+- audit device functional test with redaction validation;
+- TLS connectivity from authorised consumer path;
+- Shamir quorum test in the approved non-production/HITL procedure;
+- HSL sign/verify and historical legacy verify-continuity tests;
+- fail-closed test with sealed/unavailable Vault.
+
+## 22. Original design/spec change invariants (historical)
+
+The following held for the **original design/spec change** only. They are preserved as provenance and are not claims about the current repository-side implementation. **Current implementation acceptance** is governed by §21.2 and the active implementation plan. Live Vault deployment/bootstrap remains `NOT_RUN` until separately executed.
+
+- No Vault runtime was installed, started, initialized, unsealed, or modified by the original spec change.
+- No root token, recovery key, Shamir share, SecretID, or token was created, read, printed, or transmitted.
+- No real secret material was referenced or stored in the repository.
+- No deployment files, policies, compose files, or workflows were written by the original documentation-only change.
+- `pestoura/hermes-security-labs` and any other consumer repository were not modified.
+- The original spec change itself performed no GitHub PR/issue mutation.
 
 ## 23. Reconciliation with existing docs / ADRs
 
-This spec **preserves** all historical ADRs in `docs/13` (ADR-001 through ADR-017). It does not delete or rewrite them. It records the following **superseded earlier assumptions**:
+This spec **preserves** all historical ADRs in `docs/13` (ADR-001 through ADR-017) and adds the approved ADR-018 through ADR-021 resolutions without deleting historical rationale. It records the following **superseded earlier assumptions**:
 
 1. **Systemd host topology superseded.** `docs/01-reference-architecture.md` "Plano físico inicial recomendado" recommended native `vault.service`/`vault-agent.service` systemd units. This spec adopts **Docker** as the MVP deployment mechanism. The single-node-on-Jarvas-host intent is preserved; the mechanism is changed. `docs/01` remains as historical context.
-2. **Lab-dedicated ownership superseded.** The earlier model (and HSL's `deployment/vault-lab-l1/`) treated Vault as a lab-embedded deployment owned by HSL. This spec establishes Vault as a **shared security service owned by `hermes-vault`**, with HSL as first consumer. HSL ownership of a Vault deployment is superseded for the target architecture.
+2. **Lab-dedicated ownership superseded.** The earlier model (and HSL's historical `deployment/vault-lab-l1/`) treated Vault as a lab-embedded deployment owned by HSL. This spec establishes Vault as a **shared security service owned by `hermes-vault`**, with HSL as first consumer. HSL ownership of a Vault deployment is superseded for the target architecture.
 3. **No conflict with ADR-006/013.** Single-node Raft and Community-first remain the baseline; this spec reinforces them.
 4. **No conflict with ADR-002/011/012/015/017.** Root-out-of-Hermes, audit-before-migration, restore-drill gate, fail-closed, and explicit secret-zero design are all reinforced.
-
-**Resolution addendum (2026-08-21):** ADR-018 through ADR-021 resolve the structural choices that remained open in §25. The historical questions below are preserved for provenance; their resolutions supersede the undecided state without asserting that live runtime steps have been executed.
+5. **ADR-018 through ADR-021 resolve §25.** Verify-only continuity, private Docker security plane, controlled parallel-run and out-of-band Shamir custody are now normative decisions.
 
 ## 24. Self-review result
 
 - Placeholders/TODO/TBD/FIXME: none present.
-- Contradictions: none found. Edition (Community/OSS), deployment (Docker), seal (manual Shamir 3/2, no auto-unseal), ownership (shared service), and isolation (dedicated mounts, no namespaces) are internally consistent.
-- Ambiguity: structural choices formerly listed in §25 were resolved on 2026-08-21 and linked to ADR-018 through ADR-021.
-- Secret hygiene: no secret values, tokens, SecretIDs, or recovery material present.
+- Contradictions: stale open-decision language was removed; edition, deployment, seal, ownership, network, continuity and isolation are internally aligned.
+- Implementation-state wording: repository-side implementation is distinguished from live runtime state; `NOT_RUN` live gates are not promoted to PASS.
+- Secret hygiene: no secret values, tokens, SecretIDs, recovery material or concrete recovery locators present.
 - ADR alignment: consistent; superseded assumptions explicitly recorded without deleting history.
 
 ## 25. Structural decisions — owner resolutions
 
 The original questions are preserved below for auditability. **This resolution records owner decisions and does not claim live implementation.** Runtime/bootstrap gates remain separately verifiable and are never inferred from these decisions.
 
-1. **Key continuity for existing HSL-signed evidence.** The current HSL transit key `hermes-lab-l1-signer` is non-exportable (`exportable=false`, `allow_plaintext_backup=false`). It cannot be migrated as material to the shared `hsl-transit` mount. Original options were: retain the old HSL path for verification, abandon historical verification/re-sign, or define another continuity policy.
+1. **Key continuity for existing HSL-signed evidence.** The historical HSL transit key `hermes-lab-l1-signer` is non-exportable (`exportable=false`, `allow_plaintext_backup=false`). It cannot be migrated as material to the shared `hsl-transit` mount. Original options were: retain the old HSL path for verification, abandon historical verification/re-sign, or define another continuity policy.
    - **RESOLVED 2026-08-21 — ADR-018:** retain the legacy HSL Vault/key path strictly **verify-only** during the continuity window. After cutover, no new signature is created with `hermes-lab-l1-signer`. Historical evidence is not bulk re-signed; original signatures remain the provenance anchor.
 
 2. **Network exposure model.** The original design assumed loopback/container-network TLS but left exact bind/connectivity undecided.
