@@ -68,7 +68,10 @@ trap 'rm -f "$SERVER_CSR" "$EXTFILE"' EXIT
 # 1) Self-signed CA.
 openssl genrsa -out "$CA_KEY" 2048
 openssl req -x509 -new -nodes -key "$CA_KEY" -sha256 -days "$DAYS" \
-  -subj "/CN=hermes-vault-ca" -out "$CA_CERT"
+  -subj "/CN=hermes-vault-ca" \
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign" \
+  -out "$CA_CERT"
 
 # 2) Server key + CSR, signed by the CA with the minimum required SAN set.
 openssl genrsa -out "$SERVER_KEY" 2048

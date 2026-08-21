@@ -46,6 +46,13 @@ def test_provision_tls_script_exists():
     assert _SCRIPT.is_file(), f"missing operator TLS provisioning script: {_SCRIPT}"
 
 
+def test_provisioned_ca_declares_rfc5280_signing_usage():
+    src = _SCRIPT.read_text()
+    ca = src.split("# 1) Self-signed CA.", 1)[1].split("# 2) Server key", 1)[0]
+    assert "basicConstraints=critical,CA:TRUE" in ca
+    assert "keyUsage=critical,keyCertSign,cRLSign" in ca
+
+
 def test_provision_tls_script_references_certs_and_openssl():
     src = _SCRIPT.read_text()
     for p in _CERT_PATHS:
