@@ -1,6 +1,6 @@
 # Hermes Shared Vault Service — Design Spec
 
-- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/start: `VERIFIED_PRE_INIT` on HermesJarvas (2026-08-21); Vault initialization/unseal: `NOT_RUN`.** This runtime checkpoint proves process start, strict-TLS loopback reachability and pre-init Raft configuration only; it does **not** imply `VAULT_HEALTH_PASS`, `VAULT_UNSEALED`, audit, restore, consumer acceptance or production readiness.
+- **Status:** Approved design with repository-side implementation present and under controlled hardening. **Live Vault deployment/start: `VERIFIED_PRE_INIT` on HermesJarvas (2026-08-21); Vault initialization: `VERIFIED_INITIALIZED_SEALED`; Vault unseal: `NOT_RUN`.** The verified runtime state is `initialized=true`, `sealed=true`, Shamir `n=3`, threshold `t=2`; no share or root token is recorded here. This does **not** imply `VAULT_HEALTH_PASS`, `VAULT_UNSEALED`, audit, restore, consumer acceptance or production readiness.
 - **Original design date:** 2026-08-18
 - **Structural decision update:** 2026-08-21
 - **Original design base SHA:** `fec7b5b0a63165a93f5b6e919959094cfced569a`
