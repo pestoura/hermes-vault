@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ADR-022 operator-only bootstrap of certificate-authenticated JIT administration.
-# Requires an already-unsealed Vault, an active file audit device, an operator
-# token already present in the operator shell, and a PUBLIC client certificate.
-# It never logs in with the client certificate and never revokes the bootstrap token.
+# Uses the Vault CLI from the exact pinned runtime container; no host Vault CLI.
+# Requires active file audit, an operator token already present in the operator
+# shell, and a PUBLIC dedicated ClientAuth leaf certificate.
 set -euo pipefail
 
 if [[ "${VAULT_JIT_ADMIN_OPERATOR_ACK:-}" != "yes" ]]; then
@@ -10,14 +10,23 @@ if [[ "${VAULT_JIT_ADMIN_OPERATOR_ACK:-}" != "yes" ]]; then
   exit 1
 fi
 
-: "${VAULT_ADDR:?VAULT_ADDR is required}"
-: "${VAULT_CACERT:?VAULT_CACERT is required}"
 : "${VAULT_TOKEN:?operator token must already exist in the operator shell}"
 : "${VAULT_ADMIN_CERT_PEM:?path to the PUBLIC client certificate PEM is required}"
 
-command -v vault >/dev/null 2>&1 || { echo "vault CLI is required" >&2; exit 1; }
+command -v docker >/dev/null 2>&1 || { echo "docker is required" >&2; exit 1; }
 command -v openssl >/dev/null 2>&1 || { echo "openssl is required" >&2; exit 1; }
 [[ -f "${VAULT_ADMIN_CERT_PEM}" ]] || { echo "public certificate file not found" >&2; exit 1; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${DEPLOY_DIR}/../.." && pwd)"
+COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.yml"
+POLICY_DIR="${REPO_ROOT}/policies/admin"
+
+vault() {
+  docker compose -f "${COMPOSE_FILE}" --project-directory "${DEPLOY_DIR}" \
+    exec -T -e VAULT_TOKEN vault vault "$@"
+}
 
 openssl x509 -in "${VAULT_ADMIN_CERT_PEM}" -noout >/dev/null 2>&1 || {
   echo "certificate validation failed: expected an X.509 public certificate" >&2
@@ -39,15 +48,12 @@ if ! grep -q '"file/"' <<<"${AUDIT_JSON}"; then
   exit 2
 fi
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-POLICY_DIR="${REPO_ROOT}/policies/admin"
-
-vault policy write vault-admin-issuer "${POLICY_DIR}/vault-admin-issuer.hcl"
-vault policy write vault-admin-policy "${POLICY_DIR}/vault-admin-policy.hcl"
-vault policy write vault-admin-auth "${POLICY_DIR}/vault-admin-auth.hcl"
-vault policy write vault-admin-token "${POLICY_DIR}/vault-admin-token.hcl"
-vault policy write vault-admin-secrets-engine "${POLICY_DIR}/vault-admin-secrets-engine.hcl"
-vault policy write vault-admin-audit "${POLICY_DIR}/vault-admin-audit.hcl"
+cat "${POLICY_DIR}/vault-admin-issuer.hcl" | vault policy write vault-admin-issuer -
+cat "${POLICY_DIR}/vault-admin-policy.hcl" | vault policy write vault-admin-policy -
+cat "${POLICY_DIR}/vault-admin-auth.hcl" | vault policy write vault-admin-auth -
+cat "${POLICY_DIR}/vault-admin-token.hcl" | vault policy write vault-admin-token -
+cat "${POLICY_DIR}/vault-admin-secrets-engine.hcl" | vault policy write vault-admin-secrets-engine -
+cat "${POLICY_DIR}/vault-admin-audit.hcl" | vault policy write vault-admin-audit -
 
 if ! vault auth list -format=json | grep -q '"cert/"'; then
   vault auth enable cert
@@ -62,9 +68,9 @@ vault write auth/token/roles/hermes-vault-admin \
   token_explicit_max_ttl=10m \
   token_type=service
 
-vault write auth/cert/certs/vault-admin-issuer \
+cat "${VAULT_ADMIN_CERT_PEM}" | vault write auth/cert/certs/vault-admin-issuer \
   display_name=vault-admin-issuer \
-  "certificate=@${VAULT_ADMIN_CERT_PEM}" \
+  certificate=- \
   token_policies=vault-admin-issuer \
   token_ttl=5m \
   token_max_ttl=5m \
