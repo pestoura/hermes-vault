@@ -1,11 +1,15 @@
 ui = false
 disable_mlock = true
 
+api_addr     = "https://hermes-vault:8200"
+cluster_addr = "https://hermes-vault:8201"
+
 listener "tcp" {
-  address       = "0.0.0.0:8200"
-  tls_cert_file = "/vault/certs/vault-server.pem"
-  tls_key_file  = "/vault/certs/vault-server.key"   # HITL-owned private material, see B3
-  tls_disable   = false
+  address         = "0.0.0.0:8200"
+  cluster_address = "0.0.0.0:8201"
+  tls_cert_file   = "/vault/certs/vault-server.pem"
+  tls_key_file    = "/vault/certs/vault-server.key"   # HITL-owned private material, see B3
+  tls_disable     = false
 }
 
 storage "raft" {

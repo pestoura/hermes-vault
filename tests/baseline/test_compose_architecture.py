@@ -44,8 +44,8 @@ def test_certs_volume_readonly():
 def test_ports_loopback_only():
     comp = _compose()
     ports = comp["services"]["vault"].get("ports", [])
-    for p in ports:
-        assert p.strip().startswith("127.0.0.1:"), f"non-loopback exposure: {p}"
+    assert ports == ["127.0.0.1:8200:8200"], ports
+    assert all("8201" not in p for p in ports), "cluster port must stay Docker-internal"
 
 def test_named_data_volume_uses_official_vault_writable_path():
     comp = _compose()
@@ -84,11 +84,14 @@ def test_ui_disabled():
     hcl = _hcl()
     assert "ui = false" in hcl
 
-def test_raft_single_node_nodeid():
+def test_raft_single_node_nodeid_and_internal_cluster_addresses():
     hcl = _hcl()
     assert 'storage "raft"' in hcl
     assert "node_id" in hcl
     assert 'path    = "/vault/file"' in hcl or 'path = "/vault/file"' in hcl
+    assert 'api_addr     = "https://hermes-vault:8200"' in hcl or 'api_addr = "https://hermes-vault:8200"' in hcl
+    assert 'cluster_addr = "https://hermes-vault:8201"' in hcl
+    assert 'cluster_address = "0.0.0.0:8201"' in hcl or 'cluster_address  = "0.0.0.0:8201"' in hcl
 
 def test_tls_required_not_disabled():
     hcl = _hcl()
