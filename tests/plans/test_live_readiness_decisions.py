@@ -71,6 +71,15 @@ def test_resolved_spec_has_no_stale_open_decision_language():
     assert "ADR-018" in text and "ADR-020" in text
 
 
+def test_spec_status_matches_repo_side_implementation_without_claiming_live_runtime():
+    text = _text(SPEC)
+    assert "Design / specification only. Not implemented." not in text
+    assert "repository-side implementation" in text.lower()
+    assert "Live Vault deployment/bootstrap: `NOT_RUN`" in text
+    assert "original design/spec change" in text.lower()
+    assert "current implementation acceptance" in text.lower()
+
+
 def test_compose_uses_private_internal_security_plane_and_loopback_publication():
     comp = yaml.safe_load(_text(COMPOSE))
     vault = comp["services"]["vault"]
