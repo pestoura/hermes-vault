@@ -171,7 +171,10 @@ def test_jit_runbook_never_places_root_or_jit_token_in_command_arguments():
     assert "token revoke -self" in text
     assert "vault token revoke <INITIAL_ROOT_TOKEN>" not in text
     assert "VAULT_TOKEN=<" not in text
-    assert "-no-store" in text
+    assert "curl" in text
+    assert "--cert" in text and "--key" in text and "--cacert" in text
+    assert "ISSUER_TOKEN=" in text and "JIT_TOKEN=" in text
+    assert "unset ISSUER_TOKEN" in text and "unset JIT_TOKEN" in text
 
 
 def test_independent_jit_proof_requests_one_class_and_checks_positive_and_negative_capability():
