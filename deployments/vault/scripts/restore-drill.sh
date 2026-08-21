@@ -134,7 +134,7 @@ wait_for_uninitialized() {
 }
 
 cmd_start() {
-  local run run_id container snap runtime cid sha
+  local run run_id container snap runtime runtime_snap cid sha
   run="$(canonical_run_dir "${1:?run directory required}")"
   run_id="$(run_id_for "${run}")"
   container="$(container_for "${run_id}")"
@@ -145,6 +145,8 @@ cmd_start() {
   command -v openssl >/dev/null 2>&1 || fail "openssl is required"
 
   prepare_runtime_assets "${run}"
+  runtime_snap="${runtime}/input.snapshot"
+  install -m 0640 "${snap}" "${runtime_snap}"
   cat > "${runtime}/config/restore.hcl" <<'EOF'
 ui = false
 disable_mlock = true
@@ -183,7 +185,7 @@ EOF
     -v "${runtime}/data:/vault/file:rw" \
     -v "${runtime}/audit:/vault/logs:rw" \
     -v "${runtime}/tls:/vault/certs:ro" \
-    -v "${snap}:/vault/restore/input.snapshot:ro" \
+    -v "${runtime_snap}:/vault/restore/input.snapshot:ro" \
     -v "${run}/restore-acceptance.pem:/vault/restore/client/restore-acceptance.pem:ro" \
     -v "${run}/restore-acceptance.key:/vault/restore/client/restore-acceptance.key:ro" \
     "${IMAGE}" server)"; then
