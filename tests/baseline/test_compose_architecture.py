@@ -53,14 +53,15 @@ def test_named_data_volume_uses_official_vault_writable_path():
     assert any(v == "vault-data:/vault/file" for v in vols), vols
     assert "vault-data" in comp.get("volumes", {}), comp.get("volumes")
 
-def test_entrypoint_bootstrap_preserves_cap_drop_all():
+def test_runtime_runs_directly_as_vault_user_without_bootstrap_capabilities():
     comp = _compose()
     vault = comp["services"]["vault"]
+    assert vault.get("user") == "100:1000"
     assert vault.get("cap_drop") == ["ALL"]
+    assert "cap_add" not in vault, "runtime must not add capabilities"
     env = vault.get("environment", {})
-    assert str(env.get("SKIP_SETCAP")) == "1", env
-    assert str(env.get("SKIP_CHOWN")) == "1", env
-    assert "cap_add" not in vault, "runtime must not add capabilities to bypass entrypoint setup"
+    assert "SKIP_SETCAP" not in env, "non-root runtime must not need root-entrypoint bypasses"
+    assert "SKIP_CHOWN" not in env, "non-root runtime must not need root-entrypoint bypasses"
 
 def test_healthcheck_uses_strict_tls_with_mounted_ca():
     comp = _compose()
@@ -74,10 +75,7 @@ def test_healthcheck_uses_strict_tls_with_mounted_ca():
 
 def test_no_autounseal_and_no_enterprise_namespaces():
     hcl = _hcl()
-    # No auto-unseal `seal "..." {` stanza (Shamir manual, HITL later). The bare
-    # word "seal" may appear in comments (# Shamir manual seal) and must not trip.
     assert not re.search(r'^\s*seal\s+"', hcl, re.M), "auto-unseal seal stanza present"
-    # No Enterprise namespace usage.
     assert "namespace" not in hcl, "Enterprise namespace present"
 
 def test_ui_disabled():
