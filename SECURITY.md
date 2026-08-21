@@ -22,6 +22,14 @@ Isto inclui:
 - credenciais de bases de dados;
 - ficheiros de configuração com segredos reais.
 
+## Material TLS do Vault (HITL / custódia do operador)
+
+A chave privada TLS do Vault é gerada e custodiada pelo operador em
+`deployments/vault/certs/` (git-ignored, via `provision-tls.sh`); nunca é
+commitada. A recuperação deste material TLS é responsabilidade do operador
+(spec §25.4). A geração da chave/certificado é um passo HITL (operator-only) e
+não é executada por tarefas não assistidas nem por CI.
+
 ## Exemplos e testes
 
 Usar apenas:

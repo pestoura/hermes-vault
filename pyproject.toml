@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-vault-plan"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7", "hvac>=2,<3", "pydantic>=2,<3", "pyyaml>=6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "hitl: operator-only step, skip in CI without explicit flag",
+    "hitl_skip: skip HITL-gated tests in unattended runs",
+]

@@ -1,0 +1,25 @@
+{
+  "__synthetic__": true,
+  "note": "SYNTHETIC audit sample for C1 static redaction tests. Contains NO real secrets; token/SecretID/key literals below are redaction fixtures that the redactor MUST strip.",
+  "records": [
+    {
+      "time": "2026-08-18T00:00:00Z",
+      "type": "request",
+      "auth": {
+        "token": "s.SYNTHETIC_TOKEN_VALUE_PLACEHOLDER",
+        "root_token": "root.SYNTHETIC_ROOT_PLACEHOLDER",
+        "display_name": "approle-hsl-signer"
+      },
+      "request": {
+        "operation": "read",
+        "path": "hsl-transit/keys/hsl-signing",
+        "SecretID": "00000000-0000-0000-0000-000000000000"
+      },
+      "response": {
+        "secret_id": "11111111-1111-1111-1111-111111111111",
+        "recovery_key": "1-2-3-4-5"
+      },
+      "pem": "-----BEGIN RSA PRIVATE KEY-----\nSYNTHETIC_PRIVATE_KEY_BLOCK\n-----END RSA PRIVATE KEY-----"
+    }
+  ]
+}
