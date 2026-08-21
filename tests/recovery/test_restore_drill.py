@@ -3,10 +3,9 @@
 # Task D1 — Snapshot + isolated restore-drill harness (ADR-012, spec §10, docs/09).
 #
 # Layout (mirrors tests/audit/test_audit_redaction.py):
-#   1. Live HITL assertion — verbatim from the D1 brief. Requires a locally
-#      started, operator-initialized Vault over TLS. Skipped offline/CI (NOT_RUN).
-#      Under the D1 controller guardrails a LIVE restore drill is NOT permitted
-#      in this task; the live path stays NOT_RUN and must never be claimed PASS.
+#   1. Live HITL acceptance — runs only for an ADR-023 disposable run that the
+#      operator has force-restored and unsealed with the original quorum.
+#      It is skipped offline/CI and can never perform init/unseal/restore itself.
 #   2. Offline/static + executed-synthetic assertions — prove the harness
 #      contracts, fail-closed boundaries, and the synthetic/isolated/offline/
 #      data-free ruling WITHOUT starting Vault, touching Raft data, or using any
@@ -14,6 +13,7 @@
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -48,20 +48,21 @@ def _assemble_assignment(label: str, value: str) -> str:
 # 1) Live HITL assertion — verbatim from the brief, guarded to skip offline.
 # ---------------------------------------------------------------------------
 def _live_env():
-    return all(k in os.environ for k in ("VAULT_ADDR", "VAULT_CACERT", "VAULT_TOKEN"))
+    run_dir = os.environ.get("VAULT_RESTORE_RUN_DIR")
+    return bool(run_dir and Path(run_dir).is_dir())
 
 
 @pytest.mark.skipif(
     not _live_env(),
-    reason="D1 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT/VAULT_TOKEN); "
-    "offline static + synthetic selftest validate the same contracts below. "
-    "LIVE restore drill is NOT RUN in this task (controller guardrail).",
+    reason="ADR-023 HITL: VAULT_RESTORE_RUN_DIR is not an operator-restored and original-share-unsealed isolated run; "
+    "offline and static tests remain repository evidence only.",
 )
 def test_restore_drill_isolated_acceptance():
-    # Harness must: start isolated Vault, restore snapshot, validate storage/metadata,
-    # authenticate with a TEST identity, read a SYNTHETIC acceptance secret, assert cross-path
-    # deny, validate Transit metadata, tear down. Implemented by scripts/restore-drill.sh.
-    out = os.system("bash deployments/vault/scripts/restore-drill.sh --smoke")
+    # Runs only after the operator has completed temporary init/force-restore and
+    # original-share unseal inside the network-none disposable container.
+    run_dir = os.environ["VAULT_RESTORE_RUN_DIR"]
+    cmd = f"bash deployments/vault/scripts/restore-drill.sh --accept {shlex.quote(run_dir)}"
+    out = os.system(cmd)
     assert out == 0
 
 
@@ -100,10 +101,9 @@ def test_restore_drill_refuses_live_execution_without_hitl():
     src = _RESTORE_DRILL.read_text()
     body = _executable_body(src)
     assert "vault server" not in body, "restore-drill must not start Vault unattended"
-    # The live --smoke path must be gated on an explicit, operator-set live env
-    # (VAULT_ADDR/VAULT_CACERT/VAULT_TOKEN) and otherwise exit NON-zero so it
-    # can never silently claim a live restore PASS. This is the fail-closed
-    # boundary: live restore can never be auto-run.
+    # Live acceptance is an explicit run-directory lifecycle. The controller
+    # may connect to Vault only from inside the network-none disposable
+    # container and never automates init, force-restore or original-share unseal.
     assert re.search(r"VAULT_(ADDR|CACERT|TOKEN)", src), \
         "restore-drill must gate live execution on live VAULT_* env"
     # An offline self-test mode must exist that proves the harness without any
