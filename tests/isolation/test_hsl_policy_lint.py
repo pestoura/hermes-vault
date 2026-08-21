@@ -187,3 +187,13 @@ def test_enable_hsl_signer_never_claims_live_pass_unattended():
     # The contract scope (HSL consumer does not own this deployment) is recorded.
     assert "shared ownership" in src.lower() or "provider-owned" in src.lower(), \
         "script must record the shared-ownership / provider-owned contract"
+
+
+def test_enable_hsl_signer_ensures_approle_auth_method_idempotently():
+    src = _SCRIPT.read_text()
+    assert 'vault auth list -format=json' in src
+    assert '"approle/"' in src
+    assert 'vault auth enable approle' in src
+    auth_enable = src.index('vault auth enable approle')
+    role_write = src.index('vault write "auth/approle/role/${APPROLE_NAME}"')
+    assert auth_enable < role_write

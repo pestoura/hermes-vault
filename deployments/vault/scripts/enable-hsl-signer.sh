@@ -23,8 +23,8 @@
 #     key, or recovery material. Issuing a role secret is an operator HITL step
 #     recorded in runbooks, never coded or auto-executed here. The operator
 #     supplies VAULT_ADDR/VAULT_CACERT and an already-issued operator token in
-#     their OWN shell; this script only invokes `vault write auth/approle/...`
-#     to create the AppRole binding.
+#     their OWN shell; this script only ensures the AppRole auth method is enabled
+#     and invokes `vault write auth/approle/...` to create the AppRole binding.
 #   * It refuses to run unattended (no VAULT_HSL_SIGNER_OPERATOR_ACK).
 #
 # Operator bootstrap sequence (HITL, recorded in runbooks — NOT auto-executed):
@@ -59,7 +59,15 @@ TOKEN_MAX_TTL="1h"
 # "CIDR when stable").
 CIDR_BIND="${VAULT_HSL_SIGNER_CIDR:-}"
 
-# --- 1) AppRole (idempotent) ------------------------------------------------
+# --- 1) AppRole auth method (idempotent) ------------------------------------
+if vault auth list -format=json 2>/dev/null | grep -q '"approle/"'; then
+  echo "auth method 'approle/' already enabled — skipping (idempotent)."
+else
+  vault auth enable approle
+  echo "auth method enabled: approle/"
+fi
+
+# --- 2) AppRole (idempotent) ------------------------------------------------
 if vault read "auth/approle/role/${APPROLE_NAME}" -format=json >/dev/null 2>&1; then
   echo "approle '${APPROLE_NAME}' already present — skipping (idempotent)."
 else
