@@ -1,6 +1,6 @@
 # ADR-022 — Audit-first certificate JIT admin bootstrap
 
-**Status:** repository procedure ready; live audit/JIT bootstrap/root revoke remain `NOT_RUN` until operator HITL execution. Init/unseal and Vault health are verified separately.
+**Status:** `VERIFIED_ADR022_LIVE_ACCEPTED` on 2026-08-21. Audit, certificate JIT bootstrap, independent non-root JIT proof, initial-root self-revocation and post-revoke JIT smoke passed. This does **not** promote `UNSEALED_READY`: the restore drill and first consumer bootstrap remain `NOT_RUN` live gates.
 
 This procedure never records a Shamir share, token value, certificate secret key, passphrase, or recovery locator. Run it directly on HermesJarvas from the canonical repository. Disable shell tracing (`set +x`) before any token-bearing step.
 
