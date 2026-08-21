@@ -134,3 +134,65 @@ def test_jit_bootstrap_streams_host_policy_files_to_container_cli():
     for policy in ("vault-admin-issuer", *ADMIN_POLICIES.keys()):
         assert f"vault policy write {policy} -" in src
         assert f"{policy}.hcl" in src
+
+JIT_RUNBOOK = Path("docs/runbooks/jit-admin-bootstrap.md")
+VAULT_BOOTSTRAP_RUNBOOK = Path("docs/runbooks/vault-bootstrap.md")
+SPEC = Path("docs/specs/2026-08-18-hermes-shared-vault-service-design.md")
+
+
+def test_jit_runbook_enforces_audit_bootstrap_nonroot_proof_then_root_revoke():
+    assert JIT_RUNBOOK.is_file()
+    text = _text(JIT_RUNBOOK)
+    for heading in (
+        "### 3. Enable audit with bootstrap root",
+        "### 4. Install the JIT admin chain",
+        "### 5. Prove JIT with root absent",
+        "### 6. Revoke initial root",
+    ):
+        assert heading in text
+    assert text.index("### 3.") < text.index("### 4.") < text.index("### 5.") < text.index("### 6.")
+    assert "ROOT_REVOKED" in text
+
+
+def test_jit_runbook_generates_encrypted_dedicated_clientauth_leaf_only():
+    text = _text(JIT_RUNBOOK)
+    assert "openssl req -x509" in text
+    assert "basicConstraints=critical,CA:FALSE" in text
+    assert "extendedKeyUsage=clientAuth" in text
+    assert "-nodes" not in text
+    assert "-noenc" not in text
+    assert "operator-controlled" in text
+
+
+def test_jit_runbook_never_places_root_or_jit_token_in_command_arguments():
+    text = _text(JIT_RUNBOOK)
+    assert "read -rsp" in text
+    assert "unset VAULT_TOKEN" in text
+    assert "token revoke -self" in text
+    assert "vault token revoke <INITIAL_ROOT_TOKEN>" not in text
+    assert "VAULT_TOKEN=<" not in text
+    assert "-no-store" in text
+
+
+def test_independent_jit_proof_requests_one_class_and_checks_positive_and_negative_capability():
+    text = _text(JIT_RUNBOOK)
+    assert "-role=hermes-vault-admin" in text
+    assert "-policy=vault-admin-policy" in text
+    assert "-ttl=10m" in text
+    assert "-renewable=false" in text
+    assert "sys/policies/acl/adr022-proof" in text
+    assert "sys/audit/file" in text
+    assert "deny" in text.lower()
+
+
+def test_canonical_spec_and_old_bootstrap_runbook_reference_adr022_order():
+    spec = _text(SPEC)
+    assert "ADR-022" in spec
+    assert "audit-first" in spec.lower()
+    assert "vault-admin-issuer" in spec
+    assert "hermes-vault-admin" in spec
+    old = _text(VAULT_BOOTSTRAP_RUNBOOK)
+    low = old.lower()
+    assert "adr-022" in low
+    assert low.index("audit") < low.index("jit") < low.rindex("revoke")
+    assert "vault token revoke <INITIAL_ROOT_TOKEN>" not in old
