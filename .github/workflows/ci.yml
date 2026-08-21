@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase0-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+
+      - name: Compile Python
+        run: python -m compileall -q tools tests
+
+      - name: Run Phase 0 contracts
+        run: PYTHONPATH=. python -m unittest discover -s tests -v
+
+      - name: Repository high-confidence secret marker guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nE -e '-----BEGIN( [A-Z0-9]+)? PRIVATE KEY-----' -- . ':!tests/**'; then
+            echo 'Private-key material marker found outside synthetic tests.' >&2
+            exit 1
+          fi
+          if git grep -nE -e 'gh[pousr]_[A-Za-z0-9_]{20,}' -- . ':!tests/**'; then
+            echo 'GitHub token-shaped value found outside synthetic tests.' >&2
+            exit 1
+          fi
