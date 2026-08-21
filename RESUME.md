@@ -1,69 +1,65 @@
-# Retomar implementação do Hermes Vault
+# Resume Hermes Vault
 
-Este ficheiro é o ponto de entrada para uma futura sessão ChatGPT/Hermes.
+This file is the safe continuation checkpoint for a future ChatGPT/Hermes session.
 
-## Pedido de retoma esperado
+## Canonical checkpoint
 
-O utilizador pode dizer apenas:
+```text
+VAULT_CORE_OPERATIONAL=VERIFIED
+VAULT_CORE_OPERATIONAL_RUNTIME_PASS=VERIFIED
+RESTORE_DRILL_PASS=VERIFIED
+SCHEDULED_SNAPSHOT_PASS=VERIFIED
+JIT_SELF_REVOKE_REVALIDATION=PENDING
+FIRST_CONSUMER_BOOTSTRAP=NOT_RUN
+UNSEALED_READY=false
+```
 
-> **Vamos implementar o HashiCorp Vault.**
+The Vault core is already installed, initialized, unsealed, audited, recoverable and running continuously on HermesJarvas. Do **not** restart at Phase 0, installation, TLS provisioning or initial bootstrap.
 
-## Instruções para o controlador
+## Resume order
 
-1. Ler `README.md`.
-2. Ler `docs/12-implementation-roadmap.md`.
-3. Ler `IMPLEMENTATION-CHECKLIST.md`.
-4. Ler `docs/13-security-decisions.md` e `docs/15-threat-model.md`.
-5. Consultar as issues abertas do repositório.
-6. Confirmar o estado real do Jarvas/Hermes por discovery read-only; não assumir que o host continua igual ao momento em que este blueprint foi criado.
-7. Iniciar na primeira fase/EPIC ainda não concluída.
-8. Avançar automaticamente quando as gates estiverem GREEN/PASS.
-9. Parar apenas perante blocker real, necessidade de break-glass ou decisão de risco que exija intervenção explícita.
+1. Read `docs/16-current-runtime-status.md`.
+2. Read `README.md` and `IMPLEMENTATION-CHECKLIST.md`.
+3. Verify current `main` and exact-SHA CI before any mutation.
+4. Verify the live Vault health/readiness state without secrets.
+5. Revalidate administrative JIT self-revoke against the Git policy baseline.
+6. Continue to `FIRST_CONSUMER_BOOTSTRAP` for HSL when the JIT lifecycle gate is closed.
+7. Preserve HSL legacy signing as verify-only during controlled migration.
+8. Promote `UNSEALED_READY` only after the first-consumer acceptance gate actually passes.
 
-## Guardrails obrigatórios
+## Guardrails
 
 ```text
 NO SECRET TO THE MODEL
-IDENTITY + POLICY PER TOOL
-SHORT-LIVED CAPABILITY WHEN POSSIBLE
-JIT PRIVILEGE ELEVATION
-ROOT IS BREAK-GLASS ONLY
-AUDIT EVERYTHING
-FAIL CLOSED
+NO SHAMIR SHARE TO AUTOMATION
+NO ROOT TOKEN PERSISTENCE
+NOT_RUN != PASS
+GREEN/PASS -> continue
+HITL only for real secret/recovery boundaries
 ```
 
-## Primeira ação técnica quando a implementação começar
+## Safe live checks
 
-Executar **Phase 0 — Discovery & prerequisites** em modo read-only:
+Safe checks include repository state, CI status, Docker container metadata, restart policy, network attachments, systemd timer status and the strict-TLS `/v1/sys/health` response. Audit contents, snapshots, private keys and encrypted credential contents are not inspection targets.
 
-- versão/estado real do host Jarvas;
-- serviços Hermes/RITMO/Bridge/dispatchers;
-- secret references e consumidores, sem recolher valores para logs/chat;
-- current TLS/certificates;
-- storage disponível;
-- backup/recovery constraints;
-- integrações atuais GitHub/Grafana/Cloudflare/Google/Microsoft/Home Assistant;
-- versão/edição Vault a instalar;
-- decisão de seal/unseal.
-
-Preencher `templates/secret-inventory.yaml` apenas com metadata sanitizada.
-
-## Gate de entrada
-
-Não instalar nem migrar segredos enquanto Phase 0 não produzir:
+## Expected next technical sequence
 
 ```text
-DISCOVERY_COMPLETE
-NO_SECRET_IN_REPO
-TARGET_ARCHITECTURE_APPROVED
-RECOVERY_DESIGN_DEFINED
+JIT_SELF_REVOKE_REVALIDATION
+  -> FIRST_CONSUMER_BOOTSTRAP
+  -> hsl-transit / hsl-signing
+  -> hsl-signer policy + AppRole
+  -> HSL positive/negative acceptance
+  -> controlled consumer cutover
+  -> UNSEALED_READY promotion only if evidenced
 ```
 
-## Fonte canónica
+## Source of truth
 
-Se existir divergência entre uma conversa antiga e o repositório, usar:
+If historical conversation context disagrees with the repository or live evidence, prefer:
 
-1. estado real observado no ambiente;
-2. decisões versionadas neste repositório;
-3. documentação oficial Vault para a versão escolhida;
-4. só depois contexto histórico de conversas.
+1. current safe live observation;
+2. dated evidence under `docs/evidence/`;
+3. `docs/16-current-runtime-status.md`;
+4. accepted ADRs/specs;
+5. historical context.

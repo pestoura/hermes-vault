@@ -32,12 +32,7 @@ flowchart TD
 
 ## Seal design
 
-Durante implementação deve ser escolhida explicitamente uma das estratégias suportadas e adequadas ao ambiente:
-
-- Shamir/manual unseal;
-- auto-unseal através de mecanismo externo suportado, se disponível e justificável.
-
-A decisão deve considerar que o Jarvas é um ambiente pessoal/self-hosted e evitar dependência externa que reduza a recuperabilidade.
+A decisão live está fechada em **Shamir 3/2 manual**, sem auto-unseal. O container pode arrancar automaticamente, mas um estado sealed continua a exigir quorum operador 2/3. Nenhuma automação pode receber, reconstruir ou armazenar shares.
 
 ## Recovery material
 
@@ -95,14 +90,18 @@ revoke root
 
 Com Integrated Storage, definir política de snapshots.
 
-Baseline proposto:
+Baseline operacional atual:
 
-- snapshot automático diário;
-- retenção curta local;
-- cópia cifrada independente;
-- checksums/metadata;
-- teste periódico de restore;
+- snapshot automático diário às 02:30 local;
+- identidade mínima `vault-backup`;
+- retenção local de 14 gerações;
+- cópia cifrada AES-256-CBC/PBKDF2;
+- checksums e metadata sanitizada;
+- runtime credentials efémeras via systemd;
+- restore drill independente obrigatório;
 - não considerar backup “válido” apenas porque o ficheiro existe.
+
+Ver `docs/runbooks/scheduled-snapshot.md`.
 
 ## Restore test
 
@@ -127,7 +126,7 @@ O restore drill canónico usa o harness `docs/runbooks/restore-drill.md`. O cont
 
 O repositório pode preparar snapshot cifrado/checksummed, fixtures sintéticos, runtime isolado, status, acceptance e teardown. A inicialização temporária, o `snapshot-force` e o unseal pós-restore com as **original Shamir shares** são HITL operator-only. Nenhuma share, root/token ou localização de custódia é entregue à automação.
 
-Estado repository-side: `ADR023_REPO_READY_LIVE_HITL_PENDING`. `RESTORE_DRILL_PASS` permanece `NOT_RUN` até uma execução real completar force-restore, quorum original, acceptance e teardown no mesmo run.
+Estado live: `VERIFIED_ADR023_LIVE_ACCEPTED`. `RESTORE_DRILL_PASS` está VERIFIED por uma execução real que completou force-restore isolado, quorum Shamir original, acceptance positiva/negativa e teardown no mesmo run. Ver `docs/evidence/2026-08-21-adr-023-live-acceptance.md`.
 
 ## Disaster scenarios
 
@@ -179,4 +178,4 @@ Deve existir uma versão exportável/offline do procedimento de recuperação pa
 
 ## Gate obrigatória antes de produção
 
-Não declarar Vault production-ready até existir pelo menos um **restore drill bem-sucedido** e documentado.
+A gate de recovery do **Vault core** está satisfeita por `RESTORE_DRILL_PASS`. Consumer production enablement continua separado; `FIRST_CONSUMER_BOOTSTRAP=NOT_RUN` e `UNSEALED_READY=false` até acceptance do primeiro consumer.

@@ -2,7 +2,19 @@
 
 ## Objetivo
 
-Definir os runbooks que deverão existir quando o Vault passar a ser componente crítico do Jarvas/Hermes.
+Catalogar os runbooks operacionais do Vault partilhado. O core é `VAULT_CORE_OPERATIONAL=VERIFIED`; alguns runbooks estão ativos e outros permanecem capacidades futuras.
+
+
+## Estado operacional atual
+
+| Runbook/capacidade | Estado |
+|---|---|
+| Readiness 24/7 | ACTIVE — `hermes-vault-readiness.timer` |
+| Scheduled encrypted snapshot | ACTIVE — ver `docs/runbooks/scheduled-snapshot.md` |
+| JIT admin bootstrap | VERIFIED — revalidação live de self-revoke pendente |
+| Isolated restore drill | VERIFIED — `RESTORE_DRILL_PASS` |
+| HSL consumer migration | NOT_RUN |
+| PKI/mTLS operations | NOT_RUN |
 
 ## RB-VAULT-001 — Daily Operational Assurance
 
@@ -202,3 +214,9 @@ Não fazer self-healing autónomo de:
 - CA replacement;
 - mass revocation;
 - alteração de auth methods críticos.
+
+---
+
+## RB-VAULT-013 — Scheduled Encrypted Snapshot
+
+Implementado por `hermes-vault-snapshot.timer` / `hermes-vault-snapshot.service`. O fluxo usa AppRole `vault-backup`, token curto, strict TLS, snapshot Raft, checksum plaintext, cópia cifrada AES-256-CBC/PBKDF2, checksum cifrado, self-revoke e cleanup de runtime credentials. Procedimento canónico: `docs/runbooks/scheduled-snapshot.md`.

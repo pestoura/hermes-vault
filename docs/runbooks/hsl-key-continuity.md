@@ -1,6 +1,6 @@
 # HSL key continuity and controlled signing cutover
 
-**Status:** approved transition design. Shared Vault deployment/start and TLS connectivity are verified; initialization is `VERIFIED_INITIALIZED_SEALED`; unseal is `VERIFIED_UNSEALED_HEALTHY`, with `VAULT_HEALTH_PASS` and `VAULT_UNSEALED` verified on 2026-08-21. Audit, restore, HSL migration/cutover and remaining acceptance gates stay `NOT_RUN`.
+**Status:** approved transition design. Shared Vault core is `VAULT_CORE_OPERATIONAL=VERIFIED`: deployment/TLS/Raft/unseal, audit, root retirement, scheduled snapshot and `RESTORE_DRILL_PASS` are verified. HSL migration/cutover and first-consumer acceptance remain `NOT_RUN`.
 
 **Owner boundary:** `pestoura/hermes-vault` owns the shared Vault service. `pestoura/hermes-security-labs` is a consumer and is not modified by this runbook.
 

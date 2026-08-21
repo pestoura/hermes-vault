@@ -1,185 +1,220 @@
 # Hermes Vault
 
-[![Role](https://img.shields.io/badge/role-secrets%20%2F%20identity%20%2F%20trust%20plane-0b7285)](docs/README.md)
-[![Status](https://img.shields.io/badge/status-architecture%20blueprint%20%2F%20not%20deployed-f59f00)](#current-state)
-[![Security](https://img.shields.io/badge/security-no%20secret%20to%20the%20model-b42318)](SECURITY.md)
-[![Target](https://img.shields.io/badge/target-HashiCorp%20Vault-5f3dc4)](docs/01-reference-architecture.md)
+[![fast-gates](https://github.com/pestoura/hermes-vault/actions/workflows/fast-gates.yml/badge.svg?branch=main)](https://github.com/pestoura/hermes-vault/actions/workflows/fast-gates.yml)
+[![Status](https://img.shields.io/badge/status-VAULT__CORE__OPERATIONAL-2ea043)](docs/16-current-runtime-status.md)
+[![Vault](https://img.shields.io/badge/Vault-1.21.4-5f43e9)](docs/16-current-runtime-status.md)
+[![Recovery](https://img.shields.io/badge/restore%20drill-PASS-2ea043)](docs/evidence/2026-08-21-adr-023-live-acceptance.md)
+[![Security](https://img.shields.io/badge/security-NO%20SECRET%20TO%20MODEL-b42318)](SECURITY.md)
 
-> Canonical design and implementation plan for a future **Secrets, Identity & Trust Plane** for Jarvas/Hermes, based on HashiCorp Vault.
+**Hermes Vault is the shared Secrets, Identity & Trust Plane for HermesJarvas. `hermes-vault` **owns** the shared Vault service lifecycle, while consumers own only their use of issued capabilities.** It runs HashiCorp Vault Community as a persistent Docker service with strict TLS, single-node Raft, Shamir 3/2, audit, certificate-based JIT administration, encrypted scheduled snapshots and tested isolated recovery.
+
+The core service is live and verified. Consumer onboarding remains separately gated; the first consumer is Hermes Security Labs (HSL).
 
 ## Current state
 
-**Architecture and implementation blueprint. Production implementation has not started.**
+```text
+VAULT_CORE_OPERATIONAL=VERIFIED
+VAULT_CORE_OPERATIONAL_RUNTIME_PASS=VERIFIED
+RESTORE_DRILL_PASS=VERIFIED
+SCHEDULED_SNAPSHOT_PASS=VERIFIED
+FIRST_CONSUMER_BOOTSTRAP=NOT_RUN
+UNSEALED_READY=false
+JIT_SELF_REVOKE_REVALIDATION=PENDING
+```
 
-This repository is intentionally detailed enough to resume implementation safely in a future session, but it must not be read as proof that Vault, PKI, dynamic secrets or JIT privilege are already running on the Jarvas/Hermes host.
+See the canonical runtime ledger: [`docs/16-current-runtime-status.md`](docs/16-current-runtime-status.md).
 
-| Area | Current state |
+## Verified capabilities
+
+| Capability | State |
 |---|---|
-| Architecture / trust model | ✅ Documented |
-| Identity/auth/policy design | ✅ Documented |
-| Migration and recovery design | ✅ Documented |
-| Example policies/templates | ✅ Present, non-secret |
-| Vault runtime installation | ⏳ Not started |
-| Secret migration | ⏳ Not started |
-| Workload identity rollout | ⏳ Not started |
-| PKI / mTLS rollout | ⏳ Not started |
-| Production acceptance | ⏳ Not started |
+| Vault 1.21.4 exact-digest runtime | **VERIFIED** |
+| Docker persistent lifecycle | **VERIFIED** — `restart: unless-stopped` |
+| Strict TLS | **VERIFIED** |
+| Integrated Storage / Raft | **VERIFIED** |
+| Shamir 3/2 | **VERIFIED** — manual quorum retained |
+| File audit | **VERIFIED** |
+| Certificate JIT administration | **VERIFIED**, lifecycle revalidation noted below |
+| Initial root retirement | **VERIFIED** |
+| Isolated Raft restore drill | **VERIFIED** — `RESTORE_DRILL_PASS` |
+| Secret-free readiness assurance | **ACTIVE** |
+| Scheduled encrypted Raft snapshot | **ACTIVE** — `SCHEDULED_SNAPSHOT_PASS` |
+| HSL first consumer | **NOT_RUN** |
+| General secret migration | **NOT_RUN** |
+| Credential Broker | **NOT_RUN** |
+| PKI / mTLS rollout | **NOT_RUN** |
 
-## Objective
+`VAULT_CORE_OPERATIONAL` means the shared Vault service itself is running, recoverable and continuously assured. It does **not** mean every planned Hermes consumer or future Vault capability is already enabled.
 
-Progressively replace long-lived static credentials distributed across files, environment variables and local configuration with a centralized trust plane for:
+## Runtime topology
 
-- secrets lifecycle;
-- workload identity and least privilege;
-- short-lived credentials where supported;
-- JIT privileged administration;
-- PKI and mTLS;
-- Transit encryption/signing/HMAC;
-- audit and evidence;
-- bootstrap, recovery and break-glass.
+```mermaid
+flowchart LR
+    H[HermesJarvas host] -->|127.0.0.1:8200 TLS| V[Vault 1.21.4\nvault-vault-1]
+    V --> R[(Raft volume)]
+    V --> A[(Audit volume)]
+    V --- SP[hermes-security-plane\ninternal Docker network]
+    V --- AN[hermes-vault-admin\nlocal admin network]
+    SP --> HSL[HSL consumer\nnext gate]
+```
+
+The consumer-facing DNS alias is `hermes-vault`. Host administration remains loopback-only. Port `8201` is not host-published and the Vault UI is disabled.
+
+## 24/7 lifecycle
+
+Docker starts with HermesJarvas and the Vault container is configured to restart automatically unless explicitly stopped. The service intentionally does **not** use auto-unseal.
+
+```mermaid
+stateDiagram-v2
+    [*] --> ContainerStart: Docker/host start
+    ContainerStart --> Sealed: Shamir state after restart when unseal is required
+    Sealed --> Ready: operator quorum 2/3
+    Ready --> Ready: readiness timer / normal operation
+    Ready --> Sealed: seal or recovery event
+    Ready --> [*]: explicit controlled stop
+```
+
+A machine restart can therefore restore the **service process** automatically while still preserving the human recovery boundary. `SEALED_NEEDS_QUORUM` is a legitimate controlled state; automation must never reconstruct or handle Shamir shares.
+
+## Continuous assurance
+
+`hermes-vault-readiness.timer` runs a token-free, read-only control loop. It verifies the expected container, image/topology, restart policy and strict-TLS health endpoint.
+
+Expected evidence:
+
+```text
+VAULT_24X7_TOPOLOGY_PASS RestartPolicy=unless-stopped
+code=200 initialized=true sealed=false
+VAULT_24X7_READY
+```
+
+The check does not unseal Vault, mutate configuration, read secrets or inspect audit contents.
+
+## Scheduled encrypted snapshots
+
+A dedicated AppRole, `vault-backup`, performs the daily Raft snapshot. It has only two capabilities: read the Raft snapshot endpoint and revoke its own token.
+
+```mermaid
+sequenceDiagram
+    participant T as systemd timer 02:30
+    participant C as encrypted credentials
+    participant V as Vault
+    participant B as backup state
+    T->>C: decrypt into managed RuntimeDirectory
+    T->>V: AppRole login (5m token)
+    T->>V: GET Raft snapshot
+    V-->>T: snapshot stream
+    T->>B: write 0600 snapshot + SHA-256
+    T->>B: AES-256-CBC/PBKDF2 encrypted copy + SHA-256
+    T->>V: revoke-self
+    T->>C: remove runtime credential material
+```
+
+The first live scheduled run completed with `SCHEDULED_SNAPSHOT_PASS`; both plaintext and encrypted checksums verified and no runtime credential residue remained. Local retention is 14 generations. See [`docs/runbooks/scheduled-snapshot.md`](docs/runbooks/scheduled-snapshot.md).
+
+## Recovery
+
+Recovery is independently proven, not inferred from the existence of backups. ADR-023 executed a real isolated restore using a disposable exact-image Vault container with `network=none` and zero published ports.
+
+```mermaid
+flowchart LR
+    S[Raft snapshot] --> I[isolated disposable Vault]
+    I --> F[force restore with temporary root]
+    F --> Q[original Shamir quorum 2/3 HITL]
+    Q --> P[positive synthetic read]
+    P --> D[forbidden path deny]
+    D --> T[Transit metadata]
+    T --> R[token self-revoke]
+    R --> X[teardown / zero residue]
+```
+
+`RESTORE_DRILL_PASS` is VERIFIED. The production Vault was never a restore target and Shamir/root material remained operator-only throughout the drill.
 
 ## Security invariants
 
 ```text
 NO SECRET TO THE MODEL
-IDENTITY + POLICY PER TOOL
+IDENTITY + POLICY PER WORKLOAD
 SHORT-LIVED CAPABILITY WHEN POSSIBLE
 JIT PRIVILEGE ELEVATION
-ROOT IS BREAK-GLASS ONLY
-AUDIT EVERYTHING
+ROOT IS TEMPORARY BREAK-GLASS ONLY
+AUDIT BEFORE ADMINISTRATION
 FAIL CLOSED
+NOT_RUN != PASS
 ```
 
-These are design constraints for implementation, not marketing statements.
-
-## Target system context
-
-```mermaid
-flowchart LR
-    U[User] --> C[ChatGPT / authorized client]
-    C --> B[Hermes MCP Bridge V2]
-    B --> PLAN[Deterministic execution plan]
-    PLAN --> CB[Credential Broker]
-    CB --> V[HashiCorp Vault]
-    V --> T[Short-lived capability / crypto operation]
-    T --> TOOL[Authorized tool / integration]
-    TOOL --> E[Operational evidence]
-
-    V -. secret value never enters model context .-> C
-```
-
-## Target Vault capabilities
-
-```mermaid
-flowchart TB
-    V[Vault] --> KV[KV v2]
-    V --> DS[Dynamic secrets]
-    V --> PKI[PKI / short-lived certificates]
-    V --> TR[Transit / signing / HMAC]
-    V --> AUTH[Workload authentication]
-    V --> POL[Policies]
-    V --> AUD[Audit devices]
-    V --> REC[Recovery / break-glass]
-```
-
-Not every engine is automatically required. Implementation should enable only capabilities justified by real consumers and operational evidence.
+No real token, SecretID, Shamir share, root/recovery material, certificate private key, private-key passphrase or snapshot passphrase belongs in Git, model context, evidence or application logs.
 
 ## Privilege model
 
-| Level | Identity | Intended scope |
+| Level | Identity | Scope |
 |---:|---|---|
-| L1 | `hermes-runtime` | Routine consumption of explicitly allowed capabilities |
-| L2 | `hermes-controller` | Integration/lease/credential control operations |
-| L3 | `hermes-vault-admin` | Temporary JIT Vault administration with short TTL and stronger approval/audit |
-| L4 | root / recovery | Catastrophic recovery and break-glass, outside Hermes automation |
+| L1 | workload / consumer identity | exact consumer capability only |
+| L2 | controller / broker | governed credential and lease control |
+| L3 | `hermes-vault-admin` JIT classes | short-lived, class-scoped Vault administration |
+| L4 | root / Shamir recovery | operator-only break-glass and recovery |
 
-```mermaid
-flowchart LR
-    L1[L1 runtime] -->|bounded capability| V[Vault]
-    L2[L2 controller] -->|governed control| V
-    L3[L3 JIT admin] -->|short TTL + approval| V
-    L4[L4 break-glass] -. human recovery only .-> V
+Certificate authentication is the normal JIT entry point for L3 administration. The initial root token has been retired.
+
+### Administrative lifecycle note
+
+`JIT_SELF_REVOKE_REVALIDATION=PENDING`: two operator-side administrative cleanup attempts returned HTTP 403 after the intended operations had already succeeded. The repository baseline includes `auth/token/revoke-self`; the live administrative policy will be refreshed/revalidated before this lifecycle invariant is considered fully closed. JIT tokens are maximum-10-minute credentials and the scheduled-backup token self-revoke is independently VERIFIED.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `deployments/vault/` | canonical Docker/TLS/runtime implementation |
+| `policies/` | least-privilege Vault policies, no secret values |
+| `src/` | provider-neutral capability, evidence and isolation contracts |
+| `tests/` | architecture, lifecycle, secret-zero, recovery and runtime contracts |
+| `docs/runbooks/` | operational procedures |
+| `docs/evidence/` | sanitized, dated acceptance evidence |
+| `docs/specs/` | accepted designs and implementation boundaries |
+| `docs/16-current-runtime-status.md` | canonical current runtime ledger |
+
+## HSL first consumer
+
+Hermes Security Labs is the first consumer of the shared service. The approved target is:
+
+```text
+Vault address   https://hermes-vault:8200
+Transit mount   hsl-transit/
+Transit key     hsl-signing
+AppRole         hsl-signer
 ```
 
-## Target request flow
+The previous HSL LAB_L1 signing deployment is **superseded** for the target architecture and retained only for historical verification during controlled migration; there is no automatic fallback for new signatures.
 
-```mermaid
-sequenceDiagram
-    participant C as ChatGPT / client
-    participant B as Hermes Bridge
-    participant V as Vault / Credential Broker
-    participant T as Tool
-    participant E as Evidence
-
-    C->>B: semantic intent
-    B->>B: resolve capability + policy
-    B->>V: request exact scoped credential/capability
-    V-->>B: short-lived handle / authorized crypto operation
-    B->>T: execute without exposing secret to model
-    T-->>B: bounded result
-    B->>E: provenance / audit reference
-    B-->>C: semantic result
-```
-
-## What this repository contains today
-
-- architecture, trust-boundary and threat-model documentation;
-- identity/auth/policy design;
-- Hermes/Bridge integration design;
-- JIT privilege, PKI/mTLS and Transit design;
-- audit/observability model;
-- bootstrap/unseal/recovery guidance;
-- migration plan and implementation roadmap;
-- security decisions and official references;
-- example HCL policies containing no real secrets;
-- sanitized inventory and workload-identity templates;
-- implementation checklist and a dedicated resume point.
-
-## Ownership & HSL generalization
-
-`hermes-vault` **owns** the shared Vault service lifecycle (deployment, policy, bootstrap, recovery). The working patterns from `pestoura/hermes-security-labs` `deployment/vault-lab-l1` (single-node Raft, TLS, AppRole signer, transit key) have been generalized INTO this shared service as the canonical baseline under `deployments/vault/` (see [`docs/runbooks/hsl-generalization.md`](docs/runbooks/hsl-generalization.md)). The HSL deployment is **superseded** for the target architecture; HSL is a consumer of the shared service only and does not re-own the deployment. `hermes-vault` performs no write to HSL; cross-repo HSL migration is out of scope here.
-
-## What it does **not** contain today
-
-- a deployed Vault server/cluster;
-- initialized/unsealed production storage;
-- real Vault tokens, recovery keys or unseal material;
-- migrated production secrets;
-- active dynamic-secret engines;
-- active PKI/mTLS issuance;
-- a live Credential Broker;
-- production evidence proving the target architecture.
+`FIRST_CONSUMER_BOOTSTRAP=NOT_RUN` is deliberately separate from `VAULT_CORE_OPERATIONAL`. The shared Vault core is ready to host consumers, but HSL acceptance/cutover must still prove its own positive and negative capability gates. Until then, `UNSEALED_READY=false` remains the cross-project promotion state.
 
 ## Documentation
 
-Start with the [documentation index](docs/README.md).
-
 Recommended reading order:
 
-1. [`docs/00-context-goals.md`](docs/00-context-goals.md)
-2. [`docs/01-reference-architecture.md`](docs/01-reference-architecture.md)
-3. [`docs/03-identity-auth-policy.md`](docs/03-identity-auth-policy.md)
-4. [`docs/04-hermes-integration.md`](docs/04-hermes-integration.md)
-5. [`docs/09-bootstrap-recovery.md`](docs/09-bootstrap-recovery.md)
-6. [`docs/12-implementation-roadmap.md`](docs/12-implementation-roadmap.md)
-7. [`docs/13-security-decisions.md`](docs/13-security-decisions.md)
-8. [`docs/15-threat-model.md`](docs/15-threat-model.md)
+1. [`docs/16-current-runtime-status.md`](docs/16-current-runtime-status.md) — current verified runtime truth;
+2. [`docs/01-reference-architecture.md`](docs/01-reference-architecture.md) — architecture and trust boundaries;
+3. [`docs/03-identity-auth-policy.md`](docs/03-identity-auth-policy.md) — identity and policy model;
+4. [`docs/09-bootstrap-recovery.md`](docs/09-bootstrap-recovery.md) — bootstrap, Shamir and recovery;
+5. [`docs/runbooks/jit-admin-bootstrap.md`](docs/runbooks/jit-admin-bootstrap.md) — JIT administration;
+6. [`docs/runbooks/scheduled-snapshot.md`](docs/runbooks/scheduled-snapshot.md) — daily backup operation;
+7. [`docs/runbooks/restore-drill.md`](docs/runbooks/restore-drill.md) — isolated restore;
+8. [`docs/13-security-decisions.md`](docs/13-security-decisions.md) — accepted ADRs;
+9. [`IMPLEMENTATION-CHECKLIST.md`](IMPLEMENTATION-CHECKLIST.md) — completed and remaining capabilities;
+10. [`RESUME.md`](RESUME.md) — safe continuation checkpoint.
 
-For resuming implementation, use [`RESUME.md`](RESUME.md) and [`IMPLEMENTATION-CHECKLIST.md`](IMPLEMENTATION-CHECKLIST.md).
+The full index is [`docs/README.md`](docs/README.md).
 
-## Implementation gate
+## Verification
 
-The first real implementation phase must begin with **read-only discovery** of the current Jarvas/Hermes environment. Historical assumptions in this repository must be revalidated before installation or migration.
+The repository's `fast-gates` workflow runs policy linting, schema tests, lifecycle/evidence invariants, secret-zero tests, live-readiness static tests, the full non-HITL suite, tracked-tree secret scan, primary dry gates and Compose validation.
 
-No Vault installation or secret migration should begin until the Phase 0 entrance criteria are satisfied:
+The runtime closeout implementation was accepted at `e4659af02898513eeebed6f68ca37cf7485ac979`; GitHub Actions main run `32537626664` completed `SUCCESS` at that exact SHA.
 
-```text
-DISCOVERY_COMPLETE
-NO_SECRET_IN_REPO
-TARGET_ARCHITECTURE_APPROVED
-RECOVERY_DESIGN_DEFINED
-```
+## Resume point
+
+Do **not** restart at installation or Phase 0. The core service is already operational. Resume from the first unresolved gate in [`RESUME.md`](RESUME.md), currently administrative self-revoke revalidation followed by `FIRST_CONSUMER_BOOTSTRAP` for HSL.
 
 ## Repository safety rule
 
-No real secret, token, password, unseal/recovery key, certificate private key or reusable credential may be committed here. Examples must use fictitious names, placeholders or Vault path references only.
+This repository is a source of architecture, configuration, code and sanitized evidence — never a secret store. Secret values and recovery material stay out of Git, ChatGPT/Hermes context and ordinary logs.
