@@ -14,7 +14,10 @@ import re
 
 import pytest
 
-pytestmark = pytest.mark.hitl  # requires a locally started container + operator init/unseal
+# NOTE: no module-level pytestmark. The 3 live HITL acceptance tests below are
+# individually marked (and skip-guarded on VAULT_ADDR/VAULT_CACERT); the 4
+# static/offline contract tests are NOT marked, so `pytest -m 'not hitl'`
+# runs them and deselects only the live tests.
 
 _HCL_PATH = "deployments/vault/config/vault.hcl"
 _COMPOSE_PATH = "deployments/vault/docker-compose.yml"
@@ -27,6 +30,7 @@ def _live_env():
 # ---------------------------------------------------------------------------
 # 1) Live HITL acceptance — verbatim from the brief, guarded to skip offline.
 # ---------------------------------------------------------------------------
+@pytest.mark.hitl
 @pytest.mark.skipif(
     not _live_env(),
     reason="B2 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT); "
@@ -38,6 +42,7 @@ def test_tls_only_no_plain_http():
         httpx.get(f"http://{os.environ['VAULT_ADDR'].split('//')[1]}", verify=False, timeout=3)
 
 
+@pytest.mark.hitl
 @pytest.mark.skipif(
     not _live_env(),
     reason="B2 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT); "
@@ -50,6 +55,7 @@ def test_raft_storage_mode():
     assert st["storage_type"] == "raft"
 
 
+@pytest.mark.hitl
 @pytest.mark.skipif(
     not _live_env(),
     reason="B2 HITL: no live Vault endpoint (VAULT_ADDR/VAULT_CACERT); "

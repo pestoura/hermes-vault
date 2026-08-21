@@ -238,6 +238,41 @@ def test_secret_scan_detects_legacy_shape(tmp_path):
     assert SYNTH_LEGACY not in out
 
 
+# --------------------------------------------------------------------------
+# Canonical secret-scan SCOPE regression (FINAL FIX WAVE, item 2).
+# The tracked scan must cover tests/ so future secret-shaped test fixtures are
+# not exempt from the scanner. These tests fail RED until run-gates.sh adds
+# ':(top)tests/**' to the secret_scan pathspec, then go GREEN. Output stays
+# redacted and fail-closed (no matched value echoed).
+# --------------------------------------------------------------------------
+def test_canonical_scan_scope_includes_tests_in_source():
+    # Documentary + cheap: the canonical tracked-file selection must name tests/.
+    body = SCRIPT.read_text()
+    assert ":(top)tests/**" in body, "secret_scan pathspec omits tests/**"
+
+
+@pytest.mark.parametrize(
+    "relpath",
+    [
+        "tests/leak.py",           # a synthetic secret-shaped tracked test file
+        "tests/audit/leak.json",
+        "tests/ci/leak.sh",
+        "tests/baseline/leak.tf",
+    ],
+)
+def test_secret_scan_rejects_synthetic_secret_in_tracked_tests(tmp_path, relpath):
+    # Behavioural proof: a secret-shaped string committed into a tracked test
+    # file MUST be caught by the canonical scan. This is the fail-closed
+    # guarantee that test fixtures are not scanner-blind.
+    sb = _make_sandbox(tmp_path)
+    _track(sb, relpath, f"token = {SYNTH_HVS}\n")
+    r = _run(sb, default_rc=0)
+    out = r.stdout + r.stderr
+    assert r.returncode != 0, f"canonical scan missed {relpath}\n{out}"
+    assert SYNTH_HVS not in out, "scanner leaked the matched secret value"
+    assert relpath in out, "scanner should report the safe file path"
+
+
 def test_secret_scan_ignores_untracked_and_gitignored_material(tmp_path):
     sb = _make_sandbox(tmp_path)
     (sb / "vault-data").mkdir()

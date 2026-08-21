@@ -59,8 +59,10 @@ secret_scan() {
   echo "[gate] secret-scan"
   local pattern='(hvs\.[A-Za-z0-9]{20,})|(s\.[A-Za-z0-9]{20,})|((VAULT_TOKEN|VAULT_[A-Z0-9]+|[Rr]oot_token|recovery_key|SecretID)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9._-]{16,})'
   # Restrict to the meaningful roots but keep it broad: repo root, .github,
-  # scripts, docs, policies, src, templates. Design prose in the plan/ledger
-  # docs (docs/superpowers/) merely names controls and is excluded.
+  # scripts, docs, policies, src, templates, and tests. The latter is explicit
+  # (not merely inherited from ':(top)*') so the FUTURE-proof contract holds:
+  # secret-shaped test fixtures are NOT scanner-blind. Design prose in the
+  # plan/ledger docs (docs/superpowers/) merely names controls and is excluded.
   local hit_files=()
   local f
   local tracked
@@ -71,7 +73,8 @@ secret_scan() {
               ':(top)docs/**' \
               ':(top)policies/**' \
               ':(top)src/**' \
-              ':(top)templates/**' 2>/dev/null) || tracked=""
+              ':(top)templates/**' \
+              ':(top)tests/**' 2>/dev/null) || tracked=""
   while IFS= read -r f; do
     [ -z "$f" ] && continue
     case "$f" in
