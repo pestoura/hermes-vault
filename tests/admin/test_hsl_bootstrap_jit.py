@@ -131,3 +131,11 @@ def test_hsl_runtime_promoter_never_combines_admin_classes_and_self_revokes():
     assert 'EXPECTED_POLICY="vault-admin-policy"' in src
     assert 'EXPECTED_POLICY="vault-admin-token"' in src
     assert "vault token revoke -self" in src
+
+
+def test_policy_admin_class_can_self_inspect_for_promoter_validation():
+    policy = _text(Path("policies/admin/vault-admin-policy.hcl"))
+    lookup = policy.split('path "auth/token/lookup-self"', 1)
+    assert len(lookup) == 2, "vault-admin-policy must permit self lookup for JIT promoter validation"
+    block = lookup[1].split('}', 1)[0]
+    assert '"read"' in block
