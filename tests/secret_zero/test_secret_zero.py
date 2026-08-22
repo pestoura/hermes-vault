@@ -95,6 +95,24 @@ def test_wrapped_single_use_short_ttl_contract():
         )
 
 
+def test_secret_zero_runbook_uses_secret_id_generation_parameters():
+    rb = _REPO_ROOT / "docs" / "runbooks" / "secret-zero.md"
+    text = rb.read_text(encoding="utf-8")
+    command = text.split("vault write -f -wrap-ttl=60s", 1)[1].split("```", 1)[0]
+
+    # Vault AppRole SecretID generation accepts ttl/num_uses for per-issuance
+    # overrides. secret_id_ttl/secret_id_num_uses are role property names and
+    # must not be used as request fields on the /secret-id generation endpoint.
+    assert "ttl=120" in command
+    assert "num_uses=1" in command
+    assert "secret_id_ttl=" not in command
+    assert "secret_id_num_uses=" not in command
+
+    # Bind both the SecretID login and the resulting token to the consumer CIDR.
+    assert "cidr_list=" in command
+    assert "token_bound_cidrs=" in command
+
+
 def test_secret_zero_runbook_exists_and_is_hitl_not_run():
     # The operator runbook must exist and must NOT claim a live PASS: the actual
     # wrapped SecretID issuance remains operator-only NOT_RUN.

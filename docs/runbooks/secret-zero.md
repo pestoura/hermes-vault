@@ -35,11 +35,13 @@ state, logs, CI output, or GitHub.
 The first credential is delivered under the following constraints:
 
 1. **Wrapped** — the SecretID is returned wrapped (`-wrap-ttl`), never in clear.
-2. **Single-use** — `secret_id_num_uses=1` so the unwrapped SecretID can be used
-   exactly once by the consumer bootstrap.
-3. **Short-TTL** — `secret_id_ttl<=300` (seconds); here `120s`.
-4. **CIDR-bound** — `token_bound_cidrs` restricts use to the consumer egress
-   range (synthetic example below).
+2. **Single-use** — the issuance sets `num_uses=1`, so the unwrapped SecretID
+   can be used exactly once by the consumer bootstrap.
+3. **Short-TTL** — the effective SecretID TTL is `<=300s`; this issuance sets
+   `ttl=120`.
+4. **CIDR-bound** — `cidr_list` restricts where the SecretID may be used for
+   login, and `token_bound_cidrs` restricts where the resulting token may be
+   used (synthetic example below).
 5. **Never at rest in the repo** — no `.env`, no state file, no log, no commit.
 
 The provider-neutral contract envelope (`CapabilityRequest` /
@@ -66,8 +68,9 @@ The provider-neutral contract envelope (`CapabilityRequest` /
 # Operator-only. SYNTHETIC CIDR EXAMPLE — replace with the real consumer range.
 vault write -f -wrap-ttl=60s \
   auth/approle/role/hsl-signer/secret-id \
-  secret_id_ttl=120 \
-  secret_id_num_uses=1 \
+  ttl=120 \
+  num_uses=1 \
+  cidr_list="203.0.113.0/24" \
   token_bound_cidrs="203.0.113.0/24"
 ```
 
