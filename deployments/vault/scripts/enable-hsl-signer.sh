@@ -40,11 +40,20 @@ if [[ "${VAULT_HSL_SIGNER_OPERATOR_ACK:-}" != "yes" ]]; then
   exit 1
 fi
 
-# Operator-supplied environment (set in the operator's own shell, never here):
-#   VAULT_ADDR     e.g. https://127.0.0.1:8200
-#   VAULT_CACERT   path to the CA cert used for TLS verification
-#   VAULT_TOKEN    an already-issued operator token (NEVER printed/read by this script)
-command -v vault >/dev/null 2>&1 || { echo "vault CLI is required" >&2; exit 1; }
+# Operator supplies only the already-issued JIT token in the local shell.
+# The pinned Vault container provides VAULT_ADDR/VAULT_CACERT and the exact CLI.
+# VAULT_TOKEN is passed into that container process and is never printed here.
+command -v docker >/dev/null 2>&1 || { echo "docker is required" >&2; exit 1; }
+[[ -n "${VAULT_TOKEN:-}" ]] || { echo "VAULT_TOKEN must exist in the operator shell" >&2; exit 1; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.yml"
+
+vault() {
+  docker compose -f "${COMPOSE_FILE}" --project-directory "${DEPLOY_DIR}" \
+    exec -T -e VAULT_TOKEN vault vault "$@"
+}
 
 # Provider-owned AppRole + policy names. The contract is the contract.
 APPROLE_NAME="hsl-signer"
