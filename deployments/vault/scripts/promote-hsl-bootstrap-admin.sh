@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Promote the exact HSL bootstrap JIT class into a live post-root Vault.
+# Operator-only, fail-closed promotion of the exact HSL bootstrap JIT class
+# into a live post-root Vault. No production/consumer promotion is performed.
 # Run twice with separate class-scoped JIT tokens: policy, then role.
 set -euo pipefail
 
