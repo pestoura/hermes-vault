@@ -5,6 +5,7 @@ README = ROOT / "README.md"
 DOCS_INDEX = ROOT / "docs" / "README.md"
 RUNTIME = ROOT / "docs" / "16-current-runtime-status.md"
 EVIDENCE = ROOT / "docs" / "evidence" / "2026-08-22-vault-core-operational.md"
+JIT_EVIDENCE = ROOT / "docs" / "evidence" / "2026-08-22-jit-self-revoke-revalidation.md"
 BACKUP_RUNBOOK = ROOT / "docs" / "runbooks" / "scheduled-snapshot.md"
 
 
@@ -39,7 +40,7 @@ def test_runtime_ledger_and_live_evidence_are_canonical_and_sanitized():
         "SCHEDULED_SNAPSHOT_PASS",
         "RESTORE_DRILL_PASS",
         "FIRST_CONSUMER_BOOTSTRAP",
-        "JIT_SELF_REVOKE_REVALIDATION",
+        "JIT_SELF_REVOKE_REVALIDATION=VERIFIED",
     ):
         assert marker in runtime
     for marker in (
@@ -91,3 +92,19 @@ def test_current_recovery_and_backup_runbooks_are_not_stale():
     assert "systemd-creds" in backup
     assert "14" in backup
     assert "SCHEDULED_SNAPSHOT_PASS" in backup
+
+
+def test_jit_self_revoke_revalidation_is_verified_for_all_admin_classes():
+    evidence = text(JIT_EVIDENCE)
+    assert "JIT_SELF_REVOKE_REVALIDATION_PASS" in evidence
+    for policy in (
+        "vault-admin-policy",
+        "vault-admin-auth",
+        "vault-admin-token",
+        "vault-admin-secrets-engine",
+        "vault-admin-audit",
+        "vault-admin-recovery",
+    ):
+        assert f"JIT_CLASS_SELF_REVOKE_PASS {policy}" in evidence
+    assert "JIT_SELF_REVOKE_REVALIDATION=PENDING" not in text(README)
+    assert "JIT_SELF_REVOKE_REVALIDATION=PENDING" not in text(RUNTIME)

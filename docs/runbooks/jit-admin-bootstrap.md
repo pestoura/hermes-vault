@@ -1,6 +1,6 @@
 # ADR-022 — Audit-first certificate JIT admin bootstrap
 
-**Status:** `VERIFIED_ADR022_LIVE_ACCEPTED` on 2026-08-21. Audit, certificate JIT bootstrap, independent non-root JIT proof, initial-root self-revocation and post-revoke JIT smoke passed. This does **not** promote `UNSEALED_READY`: the restore drill is now `VERIFIED_ADR023_LIVE_ACCEPTED`, while first consumer bootstrap remains `NOT_RUN`. Administrative JIT self-revoke has a separate live revalidation pending after operator-side HTTP 403 cleanup observations.
+**Status:** `VERIFIED_ADR022_LIVE_ACCEPTED` on 2026-08-21. Audit, certificate JIT bootstrap, independent non-root JIT proof, initial-root self-revocation and post-revoke JIT smoke passed. This does **not** promote `UNSEALED_READY`: the restore drill is now `VERIFIED_ADR023_LIVE_ACCEPTED`, while first consumer bootstrap remains `NOT_RUN`. Administrative JIT self-revoke was revalidated live on 2026-08-22 for all six administrative classes; see `docs/evidence/2026-08-22-jit-self-revoke-revalidation.md`.
 
 This procedure never records a Shamir share, token value, certificate secret key, passphrase, or recovery locator. Run it directly on HermesJarvas from the canonical repository. Disable shell tracing (`set +x`) before any token-bearing step.
 

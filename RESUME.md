@@ -9,7 +9,7 @@ VAULT_CORE_OPERATIONAL=VERIFIED
 VAULT_CORE_OPERATIONAL_RUNTIME_PASS=VERIFIED
 RESTORE_DRILL_PASS=VERIFIED
 SCHEDULED_SNAPSHOT_PASS=VERIFIED
-JIT_SELF_REVOKE_REVALIDATION=PENDING
+JIT_SELF_REVOKE_REVALIDATION=VERIFIED
 FIRST_CONSUMER_BOOTSTRAP=NOT_RUN
 UNSEALED_READY=false
 ```
@@ -23,7 +23,7 @@ The Vault core is already installed, initialized, unsealed, audited, recoverable
 3. Verify current `main` and exact-SHA CI before any mutation.
 4. Verify the live Vault health/readiness state without secrets.
 5. Revalidate administrative JIT self-revoke against the Git policy baseline.
-6. Continue to `FIRST_CONSUMER_BOOTSTRAP` for HSL when the JIT lifecycle gate is closed.
+6. Continue to `FIRST_CONSUMER_BOOTSTRAP` for HSL; the JIT lifecycle gate is already VERIFIED.
 7. Preserve HSL legacy signing as verify-only during controlled migration.
 8. Promote `UNSEALED_READY` only after the first-consumer acceptance gate actually passes.
 
@@ -45,8 +45,7 @@ Safe checks include repository state, CI status, Docker container metadata, rest
 ## Expected next technical sequence
 
 ```text
-JIT_SELF_REVOKE_REVALIDATION
-  -> FIRST_CONSUMER_BOOTSTRAP
+FIRST_CONSUMER_BOOTSTRAP
   -> hsl-transit / hsl-signing
   -> hsl-signer policy + AppRole
   -> HSL positive/negative acceptance
