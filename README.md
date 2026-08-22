@@ -19,7 +19,7 @@ RESTORE_DRILL_PASS=VERIFIED
 SCHEDULED_SNAPSHOT_PASS=VERIFIED
 FIRST_CONSUMER_BOOTSTRAP=NOT_RUN
 UNSEALED_READY=false
-JIT_SELF_REVOKE_REVALIDATION=PENDING
+JIT_SELF_REVOKE_REVALIDATION=VERIFIED
 ```
 
 See the canonical runtime ledger: [`docs/16-current-runtime-status.md`](docs/16-current-runtime-status.md).
@@ -158,7 +158,7 @@ Certificate authentication is the normal JIT entry point for L3 administration. 
 
 ### Administrative lifecycle note
 
-`JIT_SELF_REVOKE_REVALIDATION=PENDING`: two operator-side administrative cleanup attempts returned HTTP 403 after the intended operations had already succeeded. The repository baseline includes `auth/token/revoke-self`; the live administrative policy will be refreshed/revalidated before this lifecycle invariant is considered fully closed. JIT tokens are maximum-10-minute credentials and the scheduled-backup token self-revoke is independently VERIFIED.
+`JIT_SELF_REVOKE_REVALIDATION=VERIFIED`: after earlier operator-side HTTP 403 cleanup observations, the canonical administrative policies were refreshed live and all six JIT classes independently proved `auth/token/revoke-self`. See [`docs/evidence/2026-08-22-jit-self-revoke-revalidation.md`](docs/evidence/2026-08-22-jit-self-revoke-revalidation.md).
 
 ## Repository layout
 
@@ -213,7 +213,7 @@ The runtime closeout implementation was accepted at `e4659af02898513eeebed6f68ca
 
 ## Resume point
 
-Do **not** restart at installation or Phase 0. The core service is already operational. Resume from the first unresolved gate in [`RESUME.md`](RESUME.md), currently administrative self-revoke revalidation followed by `FIRST_CONSUMER_BOOTSTRAP` for HSL.
+Do **not** restart at installation or Phase 0. The core service is already operational. Resume from the first unresolved gate in [`RESUME.md`](RESUME.md), currently `FIRST_CONSUMER_BOOTSTRAP` for HSL.
 
 ## Repository safety rule
 

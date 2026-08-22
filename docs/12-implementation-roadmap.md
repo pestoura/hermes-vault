@@ -269,7 +269,7 @@ ROTATION_RUNBOOKS_PASS
 
 **Recovery implementation checkpoint:** `VERIFIED_ADR023_LIVE_ACCEPTED`. O isolated restore drill harness (`network=none`, zero published ports, exact image digest, synthetic acceptance + teardown) foi executado com live HITL e `RESTORE_DRILL_PASS` está VERIFIED. First consumer permanece `NOT_RUN` como gate separado.
 
-**24x7 core checkpoint (2026-08-22):** `VAULT_CORE_OPERATIONAL=VERIFIED`. O container usa `restart: unless-stopped`; readiness secret-free está ativa; `vault-backup` produz snapshot Raft diário cifrado/checksummed através de systemd e o primeiro live run concluiu com `SCHEDULED_SNAPSHOT_PASS`. `JIT_SELF_REVOKE_REVALIDATION=PENDING` permanece como revalidação administrativa estreita. `FIRST_CONSUMER_BOOTSTRAP=NOT_RUN` e `UNSEALED_READY=false` continuam gates separados.
+**24x7 core checkpoint (2026-08-22):** `VAULT_CORE_OPERATIONAL=VERIFIED`. O container usa `restart: unless-stopped`; readiness secret-free está ativa; `vault-backup` produz snapshot Raft diário cifrado/checksummed através de systemd e o primeiro live run concluiu com `SCHEDULED_SNAPSHOT_PASS`. `JIT_SELF_REVOKE_REVALIDATION=VERIFIED` está concluída para todas as seis classes JIT administrativas. `FIRST_CONSUMER_BOOTSTRAP=NOT_RUN` e `UNSEALED_READY=false` continuam gates separados.
 
 ### Entregáveis
 

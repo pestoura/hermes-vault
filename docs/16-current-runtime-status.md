@@ -9,7 +9,7 @@ VAULT_CORE_OPERATIONAL=VERIFIED
 VAULT_CORE_OPERATIONAL_RUNTIME_PASS=VERIFIED
 FIRST_CONSUMER_BOOTSTRAP=NOT_RUN
 UNSEALED_READY=false
-JIT_SELF_REVOKE_REVALIDATION=PENDING
+JIT_SELF_REVOKE_REVALIDATION=VERIFIED
 ```
 
 **Accepted runtime implementation SHA:** `e4659af02898513eeebed6f68ca37cf7485ac979`  
@@ -52,7 +52,7 @@ The service is designed to remain running continuously on HermesJarvas. Docker s
 - Persistent root token: prohibited.
 - Administrative tokens: short-lived, class-scoped, no default policy.
 
-`JIT_SELF_REVOKE_REVALIDATION=PENDING`: operator-side cleanup attempts exposed a live/runtime drift candidate for administrative JIT self-revoke. The repository policy grants `auth/token/revoke-self`; live policy refresh/revalidation is required before this invariant is closed again.
+`JIT_SELF_REVOKE_REVALIDATION=VERIFIED`: the canonical administrative policies were refreshed live and `auth/token/revoke-self` was proved independently for `vault-admin-policy`, `vault-admin-auth`, `vault-admin-token`, `vault-admin-secrets-engine`, `vault-admin-audit`, and `vault-admin-recovery`. Evidence: `docs/evidence/2026-08-22-jit-self-revoke-revalidation.md`.
 
 ## Recovery
 
