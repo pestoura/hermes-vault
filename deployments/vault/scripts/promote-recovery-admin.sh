@@ -37,7 +37,7 @@ assert 0 < int(x.get("ttl", 0)) <= 600
 cat "${POLICY_DIR}/vault-admin-recovery.hcl" | vault policy write vault-admin-recovery -
 
 vault write auth/token/roles/hermes-vault-admin \
-  allowed_policies=vault-admin-policy,vault-admin-auth,vault-admin-token,vault-admin-secrets-engine,vault-admin-audit,vault-admin-recovery \
+  allowed_policies=vault-admin-policy,vault-admin-auth,vault-admin-token,vault-admin-secrets-engine,vault-admin-audit,vault-admin-recovery,vault-admin-hsl-bootstrap \
   disallowed_policies=default,root \
   orphan=true \
   renewable=false \

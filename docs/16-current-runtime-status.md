@@ -54,6 +54,8 @@ The service is designed to remain running continuously on HermesJarvas. Docker s
 
 `JIT_SELF_REVOKE_REVALIDATION=VERIFIED`: the canonical administrative policies were refreshed live and `auth/token/revoke-self` was proved independently for `vault-admin-policy`, `vault-admin-auth`, `vault-admin-token`, `vault-admin-secrets-engine`, `vault-admin-audit`, and `vault-admin-recovery`. Evidence: `docs/evidence/2026-08-22-jit-self-revoke-revalidation.md`.
 
+`HSL_BOOTSTRAP_JIT_LIVE_PROMOTION=NOT_RUN`: the repository defines a new exact-scope `vault-admin-hsl-bootstrap` class for only `hsl-transit` mount/key bootstrap, plus a post-root JIT promotion script. It is not included in the historical six-class live evidence above until separately promoted and revalidated on HermesJarvas. See `docs/runbooks/hsl-first-consumer-bootstrap.md`.
+
 ## Recovery
 
 - ADR-023: `VERIFIED_ADR023_LIVE_ACCEPTED`.
